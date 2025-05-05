@@ -1,0 +1,200 @@
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { FaMale, FaFemale } from 'react-icons/fa';
+
+
+const ViewAssignedTasks = () => {
+  const [groupedTasks, setGroupedTasks] = useState({});
+  const [editTask, setEditTask] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const adminId = localStorage.getItem('id');
+
+  const BACKEND_URL=import.meta.env.VITE_BACKEND_URL
+  useEffect(() => {
+    if (adminId) {
+      fetchTasks();
+    }
+  }, [adminId]);
+
+  const fetchTasks = async () => {
+    const res = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
+    const activeTasks = res.data.filter((task) => task.status !== 'Completed');
+    const grouped = activeTasks.reduce((acc, task) => {
+      const key = task.employee_id;
+      if (!acc[key]) {
+        acc[key] = {
+          employeeName: `${task.first_name} ${task.last_name}`,
+          gender: task.gender,
+          tasks: [],
+        };
+      }
+      acc[key].tasks.push(task);
+      return acc;
+    }, {});
+    setGroupedTasks(grouped);
+  };
+
+  const handleEditClick = (task) => {
+    setEditTask(task);
+    setEditForm({
+      ...task,
+      completion_date: task.completion_date ? formatDate(task.completion_date) : '',
+    });
+  };
+
+  const handleChange = (e) => {
+    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  };
+
+  const formatDate = (dateStr) =>
+    dateStr ? new Date(dateStr).toISOString().split('T')[0] : '';
+
+  const handleUpdate = async () => {
+    const updatedForm = {
+      ...editForm,
+      completion_date:
+        editForm.status === 'Completed'
+          ? editForm.completion_date || formatDate(new Date())
+          : null,
+    };
+
+    await axios.put(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, updatedForm);
+    setEditTask(null);
+    fetchTasks();
+  };
+
+  const closeEditModal = () => {
+    setEditTask(null);
+    setEditForm({});
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+      <h2 className="text-3xl sm:text-4xl font-bold text-center text-indigo-700 mb-8 sm:mb-12">
+        📋 Assigned Tasks
+      </h2>
+
+      {Object.keys(groupedTasks).length === 0 ? (
+        <p className="text-center text-gray-600 text-base sm:text-lg">No active tasks found.</p>
+      ) : (
+        <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.entries(groupedTasks).map(([employeeId, { employeeName, gender, tasks }]) => (
+            <div
+              key={employeeId}
+              className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl shadow-md hover:shadow-xl transition-all p-4 sm:p-6"
+            >
+              <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-3 sm:mb-4 flex items-center gap-2">
+                {gender === 'female' ? (
+                  <FaFemale className="text-pink-500" />
+                ) : (
+                  <FaMale className="text-blue-500" />
+                )}
+                {employeeName} —{' '}
+                <span className="text-gray-600 text-sm sm:text-base font-normal">
+                  {tasks.length} task{tasks.length > 1 ? 's' : ''}
+                </span>
+              </h3>
+
+              <ul className="space-y-3 sm:space-y-4">
+                {tasks.map((task) => (
+                  <li key={task.task_id}>
+                    <div className="flex justify-between items-center bg-white border border-gray-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-md shadow-sm hover:bg-gray-50">
+                      <span className="text-gray-800 font-medium truncate">{task.title}</span>
+                      <button
+                        onClick={() => handleEditClick(task)}
+                        className="text-indigo-600 hover:text-indigo-800 text-xs sm:text-sm font-medium"
+                      >
+                        ✏️ Edit
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editTask && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-md rounded-lg p-4 sm:p-6 shadow-lg max-h-[90vh] overflow-y-auto relative">
+            <h3 className="text-lg font-semibold mb-4">Edit Task</h3>
+            <div className="grid grid-cols-1 gap-3">
+              {['title', 'description'].map((field) => (
+                <input
+                  key={field}
+                  name={field}
+                  value={editForm[field]}
+                  onChange={handleChange}
+                  placeholder={field}
+                  className="border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              ))}
+              <input
+                type="date"
+                name="start_date"
+                value={formatDate(editForm.start_date)}
+                onChange={handleChange}
+                className="border border-gray-300 px-3 py-2 rounded-md"
+              />
+              <input
+                type="date"
+                name="due_date"
+                value={formatDate(editForm.due_date)}
+                onChange={handleChange}
+                className="border border-gray-300 px-3 py-2 rounded-md"
+              />
+              <select
+                name="priority"
+                value={editForm.priority}
+                onChange={handleChange}
+                className="border border-gray-300 px-3 py-2 rounded-md"
+              >
+                <option>Low</option>
+                <option>Medium</option>
+                <option>High</option>
+              </select>
+              <select
+                name="status"
+                value={editForm.status}
+                onChange={handleChange}
+                className="border border-gray-300 px-3 py-2 rounded-md"
+              >
+                <option>Todo</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+              </select>
+
+              {editForm.status === 'Completed' && (
+                <input
+                  type="date"
+                  name="completion_date"
+                  value={editForm.completion_date}
+                  onChange={handleChange}
+                  className="border border-gray-300 px-3 py-2 rounded-md"
+                />
+              )}
+
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  onClick={handleUpdate}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
+                >
+                  ✅ Save
+                </button>
+                <button
+                  onClick={closeEditModal}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm"
+                >
+                  ❌ Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ViewAssignedTasks;
