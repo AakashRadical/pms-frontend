@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaMale, FaFemale } from 'react-icons/fa';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 
 const ViewAssignedTasks = () => {
@@ -9,7 +10,8 @@ const ViewAssignedTasks = () => {
   const [editForm, setEditForm] = useState({});
   const adminId = localStorage.getItem('id');
 
-  const BACKEND_URL=import.meta.env.VITE_BACKEND_URL
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
   useEffect(() => {
     if (adminId) {
       fetchTasks();
@@ -31,6 +33,10 @@ const ViewAssignedTasks = () => {
       acc[key].tasks.push(task);
       return acc;
     }, {});
+    // Sort tasks by position
+    Object.values(grouped).forEach((employee) => {
+      employee.tasks.sort((a, b) => a.position - b.position);
+    });
     setGroupedTasks(grouped);
   };
 
@@ -68,6 +74,48 @@ const ViewAssignedTasks = () => {
     setEditForm({});
   };
 
+  const handleDragEnd = async (result) => {
+    const { source, destination, draggableId } = result;
+
+    // If no destination or dropped in the same position
+    if (!destination || (source.index === destination.index && source.droppableId === destination.droppableId)) {
+      return;
+    }
+
+    // Find the employee group
+    const employeeId = source.droppableId;
+    const newGroupedTasks = { ...groupedTasks };
+    const tasks = [...newGroupedTasks[employeeId].tasks];
+
+    // Reorder tasks
+    const [reorderedTask] = tasks.splice(source.index, 1);
+    tasks.splice(destination.index, 0, reorderedTask);
+
+    // Update positions
+    const updatedTasks = tasks.map((task, index) => ({
+      ...task,
+      position: index,
+    }));
+
+    newGroupedTasks[employeeId].tasks = updatedTasks;
+    setGroupedTasks(newGroupedTasks);
+
+    // Update backend with new task positions
+    try {
+      const updatePromises = updatedTasks.map((task) =>
+        axios.put(`${BACKEND_URL}/api/tasks/${task.task_id}`, {
+          ...task,
+          position: task.position,
+        })
+      );
+      await Promise.all(updatePromises);
+    } catch (error) {
+      console.error('Error updating task order:', error);
+      // Revert state if backend update fails
+      fetchTasks();
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
       <h2 className="text-3xl sm:text-4xl font-bold text-center text-indigo-700 mb-8 sm:mb-12">
@@ -77,42 +125,65 @@ const ViewAssignedTasks = () => {
       {Object.keys(groupedTasks).length === 0 ? (
         <p className="text-center text-gray-600 text-base sm:text-lg">No active tasks found.</p>
       ) : (
-        <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.entries(groupedTasks).map(([employeeId, { employeeName, gender, tasks }]) => (
-            <div
-              key={employeeId}
-              className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl shadow-md hover:shadow-xl transition-all p-4 sm:p-6"
-            >
-              <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-3 sm:mb-4 flex items-center gap-2">
-                {gender === 'female' ? (
-                  <FaFemale className="text-pink-500" />
-                ) : (
-                  <FaMale className="text-blue-500" />
-                )}
-                {employeeName} —{' '}
-                <span className="text-gray-600 text-sm sm:text-base font-normal">
-                  {tasks.length} task{tasks.length > 1 ? 's' : ''}
-                </span>
-              </h3>
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(groupedTasks).map(([employeeId, { employeeName, gender, tasks }]) => (
+              <div
+                key={employeeId}
+                className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl shadow-md hover:shadow-xl transition-all p-4 sm:p-6"
+              >
+                <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-3 sm:mb-4 flex items-center gap-2">
+                  {gender === 'female' ? (
+                    <FaFemale className="text-pink-500" />
+                  ) : (
+                    <FaMale className="text-blue-500" />
+                  )}
+                  {employeeName} —{' '}
+                  <span className="text-gray-600 text-sm sm:text-base font-normal">
+                    {tasks.length} task{tasks.length > 1 ? 's' : ''}
+                  </span>
+                </h3>
 
-              <ul className="space-y-3 sm:space-y-4">
-                {tasks.map((task) => (
-                  <li key={task.task_id}>
-                    <div className="flex justify-between items-center bg-white border border-gray-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-md shadow-sm hover:bg-gray-50">
-                      <span className="text-gray-800 font-medium truncate">{task.title}</span>
-                      <button
-                        onClick={() => handleEditClick(task)}
-                        className="text-indigo-600 hover:text-indigo-800 text-xs sm:text-sm font-medium"
-                      >
-                        ✏️ Edit
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+                <Droppable droppableId={employeeId}>
+                  {(provided) => (
+                    <ul
+                      className="space-y-3 sm:space-y-4"
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                    >
+                      {tasks.map((task, index) => (
+                        <Draggable
+                          key={task.task_id}
+                          draggableId={task.task_id.toString()}
+                          index={index}
+                        >
+                          {(provided) => (
+                            <li
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                            >
+                              <div className="flex justify-between items-center bg-white border border-gray-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-md shadow-sm hover:bg-gray-50">
+                                <span className="text-gray-800 font-medium truncate">{task.title}</span>
+                                <button
+                                  onClick={() => handleEditClick(task)}
+                                  className="text-indigo-600 hover:text-indigo-800 text-xs sm:text-sm font-medium"
+                                >
+                                  ✏️ Edit
+                                </button>
+                              </div>
+                            </li>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </ul>
+                  )}
+                </Droppable>
+              </div>
+            ))}
+          </div>
+        </DragDropContext>
       )}
 
       {editTask && (
