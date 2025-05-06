@@ -3,6 +3,7 @@ import axios from 'axios';
 import Select from 'react-select';
 
 
+
 const AssignTasks = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
@@ -20,7 +21,7 @@ const AssignTasks = () => {
 
   useEffect(() => {
     if (adminId) {
-      axios.get(`${BACKEND_URL}/api/tasks/employees/${adminId}`)
+      axios.get(`${BACKEND_URL}/api/employee/${adminId}`)
         .then(res => {
           const formatted = res.data.map(emp => ({
             value: emp.id,
