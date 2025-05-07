@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
-
-
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AssignTasks = () => {
   const [employees, setEmployees] = useState([]);
@@ -14,26 +14,32 @@ const AssignTasks = () => {
     due_date: '',
     priority: '',
     status: '',
+    position: 0, // Added for consistency with task ordering
   });
 
-  const BACKEND_URL=import.meta.env.VITE_BACKEND_URL
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const adminId = localStorage.getItem('id');
 
   useEffect(() => {
     if (adminId) {
-      axios.get(`${BACKEND_URL}/api/employee/${adminId}`)
-        .then(res => {
-          const formatted = res.data.map(emp => ({
+      axios
+        .get(`${BACKEND_URL}/api/employee/${adminId}`)
+        .then((res) => {
+          const formatted = res.data.map((emp) => ({
             value: emp.id,
-            label: `${emp.first_name} ${emp.last_name}`
+            label: `${emp.first_name} ${emp.last_name}`,
           }));
           setEmployees(formatted);
+        })
+        .catch((err) => {
+          console.error('Error fetching employees:', err);
+          toast.error('Failed to fetch employees');
         });
     }
   }, [adminId]);
 
   const handleChange = (e) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
@@ -41,11 +47,11 @@ const AssignTasks = () => {
 
     // Only require title and selectedEmployees
     if (!form.title || selectedEmployees.length === 0) {
-      alert("Please fill in the Title and assign at least one employee.");
+      toast.error('Please fill in the Title and assign at least one employee.');
       return;
     }
 
-    const assignedEmployees = selectedEmployees.map(emp => emp.value);
+    const assignedEmployees = selectedEmployees.map((emp) => emp.value);
 
     try {
       await axios.post(`${BACKEND_URL}/api/tasks/create-task`, {
@@ -53,7 +59,7 @@ const AssignTasks = () => {
         admin_id: adminId,
         assignedEmployees,
       });
-      alert("✅ Task assigned successfully");
+      toast.success('✅ Task assigned successfully');
       setForm({
         title: '',
         description: '',
@@ -61,10 +67,12 @@ const AssignTasks = () => {
         due_date: '',
         priority: '',
         status: '',
+        position: 0,
       });
       setSelectedEmployees([]);
     } catch (err) {
-      alert("❌ Failed to assign task");
+      console.error('Error creating task:', err);
+      toast.error('❌ Failed to assign task');
     }
   };
 
@@ -72,10 +80,11 @@ const AssignTasks = () => {
     <div className="max-w-2xl mx-auto mt-10 p-8 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-xl">
       <h2 className="text-3xl font-semibold text-center text-blue-800 mb-6">Assign New Task</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
-
         {/* Title - Required */}
         <div>
-          <label className="block text-blue-900 font-medium capitalize mb-1">Title<span className="text-red-500">*</span></label>
+          <label className="block text-blue-900 font-medium capitalize mb-1">
+            Title<span className="text-red-500">*</span>
+          </label>
           <input
             type="text"
             name="title"
@@ -156,7 +165,9 @@ const AssignTasks = () => {
 
         {/* Employee Selection - Required */}
         <div>
-          <label className="block text-blue-900 font-medium mb-1">Assign to Employees<span className="text-red-500">*</span></label>
+          <label className="block text-blue-900 font-medium mb-1">
+            Assign to Employees<span className="text-red-500">*</span>
+          </label>
           <div className="bg-white border border-blue-300 rounded-lg">
             <Select
               options={employees}
@@ -176,6 +187,17 @@ const AssignTasks = () => {
           ✅ Assign Task
         </button>
       </form>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 };

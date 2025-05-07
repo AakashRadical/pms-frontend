@@ -19,25 +19,29 @@ const ViewAssignedTasks = () => {
   }, [adminId]);
 
   const fetchTasks = async () => {
-    const res = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
-    const activeTasks = res.data.filter((task) => task.status !== 'Completed');
-    const grouped = activeTasks.reduce((acc, task) => {
-      const key = task.employee_id;
-      if (!acc[key]) {
-        acc[key] = {
-          employeeName: `${task.first_name} ${task.last_name}`,
-          gender: task.gender,
-          tasks: [],
-        };
-      }
-      acc[key].tasks.push(task);
-      return acc;
-    }, {});
-    // Sort tasks by position
-    Object.values(grouped).forEach((employee) => {
-      employee.tasks.sort((a, b) => a.position - b.position);
-    });
-    setGroupedTasks(grouped);
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
+      const activeTasks = res.data.filter((task) => task.status !== 'Completed');
+      const grouped = activeTasks.reduce((acc, task) => {
+        const key = task.employee_id;
+        if (!acc[key]) {
+          acc[key] = {
+            employeeName: `${task.first_name} ${task.last_name}`,
+            gender: task.gender,
+            tasks: [],
+          };
+        }
+        acc[key].tasks.push(task);
+        return acc;
+      }, {});
+      // Sort tasks by position
+      Object.values(grouped).forEach((employee) => {
+        employee.tasks.sort((a, b) => a.position - b.position);
+      });
+      setGroupedTasks(grouped);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
   };
 
   const handleEditClick = (task) => {
@@ -64,9 +68,13 @@ const ViewAssignedTasks = () => {
           : null,
     };
 
-    await axios.put(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, updatedForm);
-    setEditTask(null);
-    fetchTasks();
+    try {
+      await axios.put(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, updatedForm);
+      setEditTask(null);
+      fetchTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
   };
 
   const closeEditModal = () => {
@@ -104,7 +112,13 @@ const ViewAssignedTasks = () => {
     try {
       const updatePromises = updatedTasks.map((task) =>
         axios.put(`${BACKEND_URL}/api/tasks/${task.task_id}`, {
-          ...task,
+          title: task.title,
+          description: task.description,
+          start_date: task.start_date,
+          due_date: task.due_date,
+          priority: task.priority,
+          status: task.status,
+          completion_date: task.completion_date,
           position: task.position,
         })
       );
