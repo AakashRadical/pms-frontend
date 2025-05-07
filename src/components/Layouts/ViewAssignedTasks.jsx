@@ -3,7 +3,6 @@ import axios from 'axios';
 import { FaMale, FaFemale } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
-
 const ViewAssignedTasks = () => {
   const [groupedTasks, setGroupedTasks] = useState({});
   const [editTask, setEditTask] = useState(null);
@@ -20,27 +19,40 @@ const ViewAssignedTasks = () => {
 
   const fetchTasks = async () => {
     try {
-      const res = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
-      const activeTasks = res.data.filter((task) => task.status !== 'Completed');
-      const grouped = activeTasks.reduce((acc, task) => {
-        const key = task.employee_id;
-        if (!acc[key]) {
-          acc[key] = {
-            employeeName: `${task.first_name} ${task.last_name}`,
-            gender: task.gender,
-            tasks: [],
-          };
-        }
-        acc[key].tasks.push(task);
+      // Fetch employees
+      const employeeRes = await axios.get(`${BACKEND_URL}/api/employee/${adminId}`);
+      const employees = employeeRes.data;
+
+      // Fetch tasks
+      const taskRes = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
+      const activeTasks = taskRes.data.filter((task) => task.status !== 'Completed');
+
+      // Initialize groupedTasks with all employees
+      const grouped = employees.reduce((acc, emp) => {
+        acc[emp.id] = {
+          employeeName: `${emp.first_name} ${emp.last_name}`,
+          gender: emp.gender,
+          tasks: [],
+        };
         return acc;
       }, {});
-      // Sort tasks by position
-      Object.values(grouped).forEach((employee) => {
-        employee.tasks.sort((a, b) => a.position - b.position);
+
+      // Add tasks to corresponding employees
+      activeTasks.forEach((task) => {
+        const key = task.employee_id;
+        if (grouped[key]) {
+          grouped[key].tasks.push(task);
+        }
       });
+
+      // Sort tasks by position for each employee
+      Object.values(grouped).forEach((employee) => {
+        employee.tasks.sort((a, b) => (a.position || 0) - (b.position || 0));
+      });
+
       setGroupedTasks(grouped);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      console.error('Error fetching data:', error.response?.data || error.message);
     }
   };
 
@@ -70,10 +82,11 @@ const ViewAssignedTasks = () => {
 
     try {
       await axios.put(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, updatedForm);
+      console.log(`Task ${editTask.task_id} updated successfully`);
       setEditTask(null);
       fetchTasks();
     } catch (error) {
-      console.error('Error updating task:', error);
+      console.error('Error updating task:', error.response?.data || error.message);
     }
   };
 
@@ -112,19 +125,13 @@ const ViewAssignedTasks = () => {
     try {
       const updatePromises = updatedTasks.map((task) =>
         axios.put(`${BACKEND_URL}/api/tasks/${task.task_id}`, {
-          title: task.title,
-          description: task.description,
-          start_date: task.start_date,
-          due_date: task.due_date,
-          priority: task.priority,
-          status: task.status,
-          completion_date: task.completion_date,
           position: task.position,
         })
       );
       await Promise.all(updatePromises);
+      console.log('Task positions updated successfully');
     } catch (error) {
-      console.error('Error updating task order:', error);
+      console.error('Error updating task order:', error.response?.data || error.message);
       // Revert state if backend update fails
       fetchTasks();
     }
@@ -137,7 +144,7 @@ const ViewAssignedTasks = () => {
       </h2>
 
       {Object.keys(groupedTasks).length === 0 ? (
-        <p className="text-center text-gray-600 text-base sm:text-lg">No active tasks found.</p>
+        <p className="text-center text-gray-600 text-base sm:text-lg">No employees found.</p>
       ) : (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -165,31 +172,37 @@ const ViewAssignedTasks = () => {
                       {...provided.droppableProps}
                       ref={provided.innerRef}
                     >
-                      {tasks.map((task, index) => (
-                        <Draggable
-                          key={task.task_id}
-                          draggableId={task.task_id.toString()}
-                          index={index}
-                        >
-                          {(provided) => (
-                            <li
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                            >
-                              <div className="flex justify-between items-center bg-white border border-gray-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-md shadow-sm hover:bg-gray-50">
-                                <span className="text-gray-800 font-medium truncate">{task.title}</span>
-                                <button
-                                  onClick={() => handleEditClick(task)}
-                                  className="text-indigo-600 hover:text-indigo-800 text-xs sm:text-sm font-medium"
-                                >
-                                  ✏️ Edit
-                                </button>
-                              </div>
-                            </li>
-                          )}
-                        </Draggable>
-                      ))}
+                      {tasks.length === 0 ? (
+                        <li className="text-center text-gray-600 text-sm sm:text-base">
+                          No active tasks found.
+                        </li>
+                      ) : (
+                        tasks.map((task, index) => (
+                          <Draggable
+                            key={task.task_id}
+                            draggableId={task.task_id.toString()}
+                            index={index}
+                          >
+                            {(provided) => (
+                              <li
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                              >
+                                <div className="flex justify-between items-center bg-white border border-gray-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-md shadow-sm hover:bg-gray-50">
+                                  <span className="text-gray-800 font-medium truncate">{task.title}</span>
+                                  <button
+                                    onClick={() => handleEditClick(task)}
+                                    className="text-indigo-600 hover:text-indigo-800 text-xs sm:text-sm font-medium"
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                </div>
+                              </li>
+                            )}
+                          </Draggable>
+                        ))
+                      )}
                       {provided.placeholder}
                     </ul>
                   )}

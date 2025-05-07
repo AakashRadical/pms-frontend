@@ -26,7 +26,7 @@ const { Header, Sider, Content } = Layout;
 
 const Home = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [currentPage, setCurrentPage] = useState("view-members");
+  const [currentPage, setCurrentPage] = useState("view-tasks");
   const navigate = useNavigate();
 
   useEffect(() => {
