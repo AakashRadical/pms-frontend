@@ -1,12 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaMale, FaFemale } from 'react-icons/fa';
+import { FaMale, FaFemale, FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { LOCAL_URL } from '../../utils/constant';
 
 const ViewAssignedTasks = () => {
   const [groupedTasks, setGroupedTasks] = useState({});
   const [editTask, setEditTask] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [addTask, setAddTask] = useState(null);
+  const [addForm, setAddForm] = useState({
+    title: '',
+    description: '',
+    start_date: '',
+    due_date: '',
+    priority: '',
+    status: '',
+    position: 0,
+  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const adminId = localStorage.getItem('id');
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -19,15 +33,13 @@ const ViewAssignedTasks = () => {
 
   const fetchTasks = async () => {
     try {
-      // Fetch employees
       const employeeRes = await axios.get(`${BACKEND_URL}/api/employee/${adminId}`);
       const employees = employeeRes.data;
 
-      // Fetch tasks
       const taskRes = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
+      console.log('Fetched tasks:', taskRes.data); // Log tasks for debugging
       const activeTasks = taskRes.data.filter((task) => task.status !== 'Completed');
 
-      // Initialize groupedTasks with all employees
       const grouped = employees.reduce((acc, emp) => {
         acc[emp.id] = {
           employeeName: `${emp.first_name} ${emp.last_name}`,
@@ -37,7 +49,6 @@ const ViewAssignedTasks = () => {
         return acc;
       }, {});
 
-      // Add tasks to corresponding employees
       activeTasks.forEach((task) => {
         const key = task.employee_id;
         if (grouped[key]) {
@@ -45,7 +56,6 @@ const ViewAssignedTasks = () => {
         }
       });
 
-      // Sort tasks by position for each employee
       Object.values(grouped).forEach((employee) => {
         employee.tasks.sort((a, b) => (a.position || 0) - (b.position || 0));
       });
@@ -53,6 +63,7 @@ const ViewAssignedTasks = () => {
       setGroupedTasks(grouped);
     } catch (error) {
       console.error('Error fetching data:', error.response?.data || error.message);
+      toast.error('Failed to fetch tasks');
     }
   };
 
@@ -64,8 +75,13 @@ const ViewAssignedTasks = () => {
     });
   };
 
-  const handleChange = (e) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+  const handleChange = (e, formType) => {
+    const { name, value } = e.target;
+    if (formType === 'edit') {
+      setEditForm((prev) => ({ ...prev, [name]: value }));
+    } else {
+      setAddForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const formatDate = (dateStr) =>
@@ -82,37 +98,101 @@ const ViewAssignedTasks = () => {
 
     try {
       await axios.put(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, updatedForm);
-      console.log(`Task ${editTask.task_id} updated successfully`);
+      toast.success(`Task updated successfully`);
       setEditTask(null);
-      fetchTasks();
+      await fetchTasks();
     } catch (error) {
       console.error('Error updating task:', error.response?.data || error.message);
+      toast.error('Failed to update task');
+    }
+  };
+
+  const handleDelete = async () => {
+
+    try {
+      await axios.delete(`${BACKEND_URL}/api/tasks/${editTask.task_id}`);
+      toast.success(`Task deleted successfully`);
+      setEditTask(null);
+      setShowDeleteConfirm(false);
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error.response?.data || error.message);
+      if (error.response?.status === 404) {
+        toast.error('Task not found');
+        await fetchTasks();
+      } else {
+        toast.error('Failed to delete task');
+      }
     }
   };
 
   const closeEditModal = () => {
     setEditTask(null);
     setEditForm({});
+    setShowDeleteConfirm(false);
+  };
+
+  const handleAddClick = (employeeId) => {
+    setAddTask({ employeeId });
+    setAddForm({
+      title: '',
+      description: '',
+      start_date: '',
+      due_date: '',
+      priority: '',
+      status: '',
+      position: groupedTasks[employeeId].tasks.length,
+    });
+  };
+
+  const closeAddModal = () => {
+    setAddTask(null);
+    setAddForm({
+      title: '',
+      description: '',
+      start_date: '',
+      due_date: '',
+      priority: '',
+      status: '',
+      position: 0,
+    });
+  };
+
+  const handleAddTask = async () => {
+    if (!addForm.title) {
+      toast.error('Please fill in the Title.');
+      return;
+    }
+
+    try {
+      await axios.post(`${BACKEND_URL}/api/tasks/create-task`, {
+        ...addForm,
+        admin_id: adminId,
+        assignedEmployees: [addTask.employeeId],
+      });
+      toast.success('✅ Task assigned successfully');
+      closeAddModal();
+      await fetchTasks();
+    } catch (error) {
+      console.error('Error creating task:', error.response?.data || error.message);
+      toast.error('❌ Failed to assign task');
+    }
   };
 
   const handleDragEnd = async (result) => {
     const { source, destination, draggableId } = result;
 
-    // If no destination or dropped in the same position
     if (!destination || (source.index === destination.index && source.droppableId === destination.droppableId)) {
       return;
     }
 
-    // Find the employee group
     const employeeId = source.droppableId;
     const newGroupedTasks = { ...groupedTasks };
     const tasks = [...newGroupedTasks[employeeId].tasks];
 
-    // Reorder tasks
     const [reorderedTask] = tasks.splice(source.index, 1);
     tasks.splice(destination.index, 0, reorderedTask);
 
-    // Update positions
     const updatedTasks = tasks.map((task, index) => ({
       ...task,
       position: index,
@@ -121,7 +201,6 @@ const ViewAssignedTasks = () => {
     newGroupedTasks[employeeId].tasks = updatedTasks;
     setGroupedTasks(newGroupedTasks);
 
-    // Update backend with new task positions
     try {
       const updatePromises = updatedTasks.map((task) =>
         axios.put(`${BACKEND_URL}/api/tasks/${task.task_id}`, {
@@ -129,11 +208,11 @@ const ViewAssignedTasks = () => {
         })
       );
       await Promise.all(updatePromises);
-      console.log('Task positions updated successfully');
+    
     } catch (error) {
       console.error('Error updating task order:', error.response?.data || error.message);
-      // Revert state if backend update fails
-      fetchTasks();
+      toast.error('Failed to update task order');
+      await fetchTasks();
     }
   };
 
@@ -151,29 +230,37 @@ const ViewAssignedTasks = () => {
             {Object.entries(groupedTasks).map(([employeeId, { employeeName, gender, tasks }]) => (
               <div
                 key={employeeId}
-                className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl shadow-md hover:shadow-xl transition-all p-4 sm:p-6"
+                className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-4 sm:p-6"
               >
-                <h3 className="text-lg sm:text-xl font-semibold text-blue-700 mb-3 sm:mb-4 flex items-center gap-2">
-                  {gender === 'female' ? (
-                    <FaFemale className="text-pink-500" />
-                  ) : (
-                    <FaMale className="text-blue-500" />
-                  )}
-                  {employeeName} —{' '}
-                  <span className="text-gray-600 text-sm sm:text-base font-normal">
-                    {tasks.length} task{tasks.length > 1 ? 's' : ''}
-                  </span>
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6">
+                  <h3 className="text-lg sm:text-xl font-semibold text-blue-700 flex items-center gap-2 mb-2 sm:mb-0">
+                    {gender === 'female' ? (
+                      <FaFemale className="text-pink-500 text-xl" />
+                    ) : (
+                      <FaMale className="text-blue-500 text-xl" />
+                    )}
+                    <span className="truncate">{employeeName}</span>
+                    <span className="text-gray-600 text-sm sm:text-base font-normal ml-2">
+                      ({tasks.length} task{tasks.length !== 1 ? 's' : ''})
+                    </span>
+                  </h3>
+                  <button
+                    onClick={() => handleAddClick(employeeId)}
+                    className="bg-emerald-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm flex items-center gap-2 transition-colors duration-200"
+                  >
+                    <FaPlus className="text-sm" /> 
+                  </button>
+                </div>
 
                 <Droppable droppableId={employeeId}>
                   {(provided) => (
                     <ul
-                      className="space-y-3 sm:space-y-4"
+                      className="space-y-3"
                       {...provided.droppableProps}
                       ref={provided.innerRef}
                     >
                       {tasks.length === 0 ? (
-                        <li className="text-center text-gray-600 text-sm sm:text-base">
+                        <li className="text-center text-gray-600 text-sm sm:text-base py-4">
                           No active tasks found.
                         </li>
                       ) : (
@@ -188,14 +275,17 @@ const ViewAssignedTasks = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
+                                className="bg-white border border-gray-200 rounded-md shadow-sm hover:bg-gray-50 transition-colors duration-200"
                               >
-                                <div className="flex justify-between items-center bg-white border border-gray-200 px-3 py-2 sm:px-4 sm:py-2.5 rounded-md shadow-sm hover:bg-gray-50">
-                                  <span className="text-gray-800 font-medium truncate">{task.title}</span>
+                                <div className="flex items-center justify-between p-3 sm:p-4">
+                                  <span className="text-gray-800 text-sm sm:text-base font-medium flex-1 mr-4 break-words">
+                                    {task.title}
+                                  </span>
                                   <button
                                     onClick={() => handleEditClick(task)}
-                                    className="text-indigo-600 hover:text-indigo-800 text-xs sm:text-sm font-medium"
+                                    className="text-indigo-600 hover:text-indigo-800 transition-colors duration-200"
                                   >
-                                    ✏️ Edit
+                                    <FaEdit className="text-xl" />
                                   </button>
                                 </div>
                               </li>
@@ -214,83 +304,258 @@ const ViewAssignedTasks = () => {
       )}
 
       {editTask && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center px-4">
-          <div className="bg-white w-full max-w-md rounded-lg p-4 sm:p-6 shadow-lg max-h-[90vh] overflow-y-auto relative">
-            <h3 className="text-lg font-semibold mb-4">Edit Task</h3>
-            <div className="grid grid-cols-1 gap-3">
-              {['title', 'description'].map((field) => (
-                <input
-                  key={field}
-                  name={field}
-                  value={editForm[field]}
-                  onChange={handleChange}
-                  placeholder={field}
-                  className="border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              ))}
-              <input
-                type="date"
-                name="start_date"
-                value={formatDate(editForm.start_date)}
-                onChange={handleChange}
-                className="border border-gray-300 px-3 py-2 rounded-md"
-              />
-              <input
-                type="date"
-                name="due_date"
-                value={formatDate(editForm.due_date)}
-                onChange={handleChange}
-                className="border border-gray-300 px-3 py-2 rounded-md"
-              />
-              <select
-                name="priority"
-                value={editForm.priority}
-                onChange={handleChange}
-                className="border border-gray-300 px-3 py-2 rounded-md"
-              >
-                <option>Low</option>
-                <option>Medium</option>
-                <option>High</option>
-              </select>
-              <select
-                name="status"
-                value={editForm.status}
-                onChange={handleChange}
-                className="border border-gray-300 px-3 py-2 rounded-md"
-              >
-                <option>Todo</option>
-                <option>In Progress</option>
-                <option>Completed</option>
-              </select>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4 sm:px-6">
+          <div className="bg-white w-full max-w-lg rounded-xl p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+            {!showDeleteConfirm ? (
+              <>
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-6">Edit Task</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {['title', 'description'].map((field) => (
+                    <div key={field}>
+                      <label className="block text-gray-700 font-medium capitalize mb-2">
+                        {field}
+                      </label>
+                      {field === 'description' ? (
+                        <textarea
+                          name={field}
+                          value={editForm[field] || ''}
+                          onChange={(e) => handleChange(e, 'edit')}
+                          placeholder={field}
+                          className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200 resize-none"
+                          rows="4"
+                        />
+                      ) : (
+                        <input
+                          name={field}
+                          value={editForm[field] || ''}
+                          onChange={(e) => handleChange(e, 'edit')}
+                          placeholder={field}
+                          className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                        />
+                      )}
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Start Date</label>
+                      <input
+                        type="date"
+                        name="start_date"
+                        value={formatDate(editForm.start_date)}
+                        onChange={(e) => handleChange(e, 'edit')}
+                        className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Due Date</label>
+                      <input
+                        type="date"
+                        name="due_date"
+                        value={formatDate(editForm.due_date)}
+                        onChange={(e) => handleChange(e, 'edit')}
+                        className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">Priority</label>
+                    <select
+                      name="priority"
+                      value={editForm.priority || ''}
+                      onChange={(e) => handleChange(e, 'edit')}
+                      className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                    >
+                      <option value="">Select Priority</option>
+                      <option>Low</option>
+                      <option>Medium</option>
+                      <option>High</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-medium mb-2">Status</label>
+                    <select
+                      name="status"
+                      value={editForm.status || ''}
+                      onChange={(e) => handleChange(e, 'edit')}
+                      className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                    >
+                      <option value="">Select Status</option>
+                      <option>Todo</option>
+                      <option>In Progress</option>
+                      <option>Completed</option>
+                    </select>
+                  </div>
+                  {editForm.status === 'Completed' && (
+                    <div>
+                      <label className="block text-gray-700 font-medium mb-2">Completion Date</label>
+                      <input
+                        type="date"
+                        name="completion_date"
+                        value={editForm.completion_date}
+                        onChange={(e) => handleChange(e, 'edit')}
+                        className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                      />
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-3 mt-6">
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200"
+                    >
+                      <FaTrash className="text-sm" /> Delete
+                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleUpdate}
+                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200"
+                      >
+                        <span>✅ Save</span>
+                      </button>
+                      <button
+                        onClick={closeEditModal}
+                        className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200"
+                      >
+                        <span>❌ Cancel</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-6">Confirm Deletion</h3>
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to delete the task "<strong>{editForm.title}</strong>"? This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200"
+                  >
+                    <FaTrash className="text-sm" /> Delete
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200"
+                  >
+                    <span>❌ Cancel</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
-              {editForm.status === 'Completed' && (
+      {addTask && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4 sm:px-6">
+          <div className="bg-white w-full max-w-lg rounded-xl p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-6">Add New Task</h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Title <span className="text-red-500">*</span>
+                </label>
                 <input
-                  type="date"
-                  name="completion_date"
-                  value={editForm.completion_date}
-                  onChange={handleChange}
-                  className="border border-gray-300 px-3 py-2 rounded-md"
+                  name="title"
+                  value={addForm.title}
+                  onChange={(e) => handleChange(e, 'add')}
+                  placeholder="Enter task title"
+                  className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                  required
                 />
-              )}
-
-              <div className="flex justify-end gap-2 mt-2">
-                <button
-                  onClick={handleUpdate}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm"
+              </div>
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Description</label>
+                <textarea
+                  name="description"
+                  value={addForm.description}
+                  onChange={(e) => handleChange(e, 'add')}
+                  placeholder="Enter task description"
+                  className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200 resize-none"
+                  rows="4"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    name="start_date"
+                    value={addForm.start_date}
+                    onChange={(e) => handleChange(e, 'add')}
+                    className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Due Date</label>
+                  <input
+                    type="date"
+                    name="due_date"
+                    value={addForm.due_date}
+                    onChange={(e) => handleChange(e, 'add')}
+                    className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Priority</label>
+                <select
+                  name="priority"
+                  value={addForm.priority}
+                  onChange={(e) => handleChange(e, 'add')}
+                  className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
                 >
-                  ✅ Save
+                  <option value="">Select Priority</option>
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Status</label>
+                <select
+                  name="status"
+                  value={addForm.status}
+                  onChange={(e) => handleChange(e, 'add')}
+                  className="w-full border border-gray-300 px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-200"
+                >
+                  <option value="">Select Status</option>
+                  <option>Todo</option>
+                  <option>In Progress</option>
+                  <option>Completed</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={handleAddTask}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200"
+                >
+                  <FaPlus className="text-sm" /> Add Task
                 </button>
                 <button
-                  onClick={closeEditModal}
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm"
+                  onClick={closeAddModal}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors duration-200"
                 >
-                  ❌ Cancel
+                  <span>❌ Cancel</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 };
