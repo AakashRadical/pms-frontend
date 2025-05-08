@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-
+import { FaTrash } from 'react-icons/fa';
+import { toast } from 'react-toastify';
 
 const CompletedTasks = () => {
   const [groupedCompleted, setGroupedCompleted] = useState({});
@@ -8,8 +9,9 @@ const CompletedTasks = () => {
   const [selectedDate, setSelectedDate] = useState(getTodayDateLocal());
   const [editTask, setEditTask] = useState(null);
   const [editStatus, setEditStatus] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const BACKEND_URL=import.meta.env.VITE_BACKEND_URL
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
   const adminId = localStorage.getItem('id');
 
   function getTodayDateLocal() {
@@ -26,8 +28,10 @@ const CompletedTasks = () => {
     dateStr ? new Date(dateStr).toLocaleDateString() : '';
 
   useEffect(() => {
-    fetchCompletedTasks();
-  }, []);
+    if (adminId) {
+      fetchCompletedTasks();
+    }
+  }, [adminId]);
 
   const fetchCompletedTasks = async () => {
     try {
@@ -36,6 +40,7 @@ const CompletedTasks = () => {
       setAllCompletedTasks(completed);
     } catch (error) {
       console.error("Error fetching completed tasks:", error);
+      toast.error('Failed to fetch completed tasks');
     }
   };
 
@@ -67,56 +72,78 @@ const CompletedTasks = () => {
         status: editStatus,
         completion_date: editStatus === 'Completed' ? getTodayDateLocal() : null,
       });
-
+      toast.success('Task updated successfully');
       setEditTask(null);
-      fetchCompletedTasks();
+      await fetchCompletedTasks();
     } catch (error) {
       console.error("Update error:", error);
+      toast.error('Failed to update task');
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`${BACKEND_URL}/api/tasks/${editTask.task_id}`);
+      toast.success('Task deleted successfully');
+      setEditTask(null);
+      setShowDeleteConfirm(false);
+      await fetchCompletedTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error.response?.data || error.message);
+      if (error.response?.status === 404) {
+        toast.error('Task not found');
+        await fetchCompletedTasks();
+      } else {
+        toast.error('Failed to delete task');
+      }
+    }
+  };
+
+  const closeEditModal = () => {
+    setEditTask(null);
+    setShowDeleteConfirm(false);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 px-6 py-12">
-      <h2 className="text-4xl font-extrabold text-blue-800 text-center mb-8 drop-shadow">
+    <div className="w-full px-2 sm:px-4">
+      <h2 className="text-2xl sm:text-3xl font-bold text-indigo-700 text-center mb-6">
         ✅ Completed Tasks by Date
       </h2>
 
-      <div className="max-w-xl mx-auto mb-12 flex justify-center">
+      <div className="max-w-xl mx-auto mb-6 flex justify-center">
         <input
           type="date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
-          className="border border-blue-300 px-4 py-2 rounded-lg shadow-md text-gray-700"
+          className="w-full max-w-xs border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
         />
       </div>
 
       {selectedDate && Object.keys(groupedCompleted).length > 0 ? (
-        <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
           {Object.keys(groupedCompleted).map(employeeKey => (
             <div
               key={employeeKey}
-              className="bg-white/70 backdrop-blur-xl border border-blue-100 rounded-2xl shadow-lg p-6 transition-all hover:shadow-blue-200"
+              className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 sm:p-4"
             >
-              <h3 className="text-lg font-semibold text-blue-700 mb-3 flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-semibold text-blue-700 mb-3 flex items-center gap-2">
                 👤 {employeeKey.split('-')[1]}
               </h3>
-              <ul className="list-disc pl-5 space-y-2 text-gray-700 text-sm">
+              <ul className="space-y-2 text-gray-700 text-sm">
                 {groupedCompleted[employeeKey].map(task => (
-                  <li key={task.task_id}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-medium text-gray-800">{task.title}</span>{' '}
-                        <span className="text-gray-500">
-                          (Completed on: {formatDateDisplay(task.completion_date)})
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleEdit(task)}
-                        className="ml-3 px-3 py-1 text-sm bg-blue-200 hover:bg-blue-300 rounded"
-                      >
-                        Edit
-                      </button>
+                  <li key={task.task_id} className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium text-gray-800">{task.title}</span>{' '}
+                      <span className="text-gray-500 text-xs sm:text-sm">
+                        (Completed: {formatDateDisplay(task.completion_date)})
+                      </span>
                     </div>
+                    <button
+                      onClick={() => handleEdit(task)}
+                      className="text-indigo-600 hover:text-indigo-800 text-sm"
+                    >
+                      Edit
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -124,44 +151,80 @@ const CompletedTasks = () => {
           ))}
         </div>
       ) : selectedDate ? (
-        <div className="text-center text-gray-500 text-lg italic mt-12">
+        <div className="text-center text-gray-600 text-sm sm:text-base mt-6">
           No completed tasks found for {formatDateDisplay(selectedDate)}.
         </div>
       ) : (
-        <div className="text-center text-gray-500 text-lg italic mt-12">
+        <div className="text-center text-gray-600 text-sm sm:text-base mt-6">
           Please select a date to view completed tasks.
         </div>
       )}
 
       {editTask && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-lg w-full max-w-md space-y-4">
-            <h3 className="text-xl font-bold text-gray-800">Edit Task Status</h3>
-            <p className="text-gray-600 font-medium">{editTask.title}</p>
-
-            <select
-              value={editStatus}
-              onChange={(e) => setEditStatus(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded-md"
-            >
-              <option value="Completed">Completed</option>
-              <option value="ToDo">ToDo</option>
-            </select>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setEditTask(null)}
-                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdate}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Save
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-md rounded-lg p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+            {!showDeleteConfirm ? (
+              <>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Edit Task Status</h3>
+                <p className="text-gray-600 text-sm font-medium mb-4">{editTask.title}</p>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="block text-gray-700 text-sm font-medium mb-1">Status</label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                    >
+                      <option value="Completed">Completed</option>
+                      <option value="Todo">Todo</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-between gap-2 mt-4">
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                    >
+                      <FaTrash className="text-xs" /> Delete
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleUpdate}
+                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                      >
+                        <span>✅ Save</span>
+                      </button>
+                      <button
+                        onClick={closeEditModal}
+                        className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                      >
+                        <span>❌ Cancel</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Are you sure you want to delete the task "<strong>{editTask.title}</strong>"? This action cannot be undone.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={handleDelete}
+                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                  >
+                    <FaTrash className="text-xs" /> Delete
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                  >
+                    <span>❌ Cancel</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

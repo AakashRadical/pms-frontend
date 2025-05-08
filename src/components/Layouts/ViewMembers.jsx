@@ -4,8 +4,7 @@ import { FaMale, FaFemale, FaEye, FaPowerOff } from 'react-icons/fa';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Tooltip } from 'react-tooltip';
-import 'react-tooltip/dist/react-tooltip.css'; // make sure this line is here
-
+import 'react-tooltip/dist/react-tooltip.css';
 
 const ViewMembers = () => {
   const [allEmployees, setAllEmployees] = useState([]);
@@ -81,13 +80,11 @@ const ViewMembers = () => {
   const completedTasks = employeeTasks.filter(task => task.status === 'Completed');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-100 px-4 sm:px-6 py-8 sm:py-12">
+    <div className="w-full h-full px-4 sm:px-6 py-6 overflow-y-auto">
       <ToastContainer position="top-right" autoClose={2000} />
-      <h2 className="text-4xl font-extrabold text-blue-800 text-center mb-6 drop-shadow">
-        Members Under You
-      </h2>
+      <h2 className="text-3xl font-bold text-blue-800 text-center mb-6">Members Under You</h2>
 
-      <div className="flex justify-center gap-4 mb-8">
+      <div className="flex justify-center gap-4 mb-6 flex-wrap">
         <button
           onClick={() => setActiveTab('active')}
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
@@ -111,11 +108,11 @@ const ViewMembers = () => {
       </div>
 
       {filteredEmployees.length > 0 ? (
-        <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
+        <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {filteredEmployees.map(employee => (
             <div
               key={employee.id}
-              className="bg-white/70 backdrop-blur-xl border border-blue-100 rounded-2xl shadow-lg p-6 transition-all hover:shadow-blue-200 relative"
+              className="bg-white border border-gray-200 rounded-xl shadow p-5 hover:shadow-md transition relative"
             >
               <h3 className="text-lg font-semibold text-blue-700 mb-2 flex items-center gap-2">
                 {employee.gender === 'female' ? (
@@ -129,7 +126,7 @@ const ViewMembers = () => {
               <div className="flex justify-between items-center mt-4">
                 <button
                   onClick={(e) => handleStatusToggle(e, employee)}
-                  className={`px-1 py-1 text-lg rounded-full transition-all ${
+                  className={`px-2 py-1 text-sm rounded-full transition ${
                     employee.status === 1
                       ? 'bg-red-500 hover:bg-red-600 text-white'
                       : 'bg-green-500 hover:bg-green-600 text-white'
@@ -139,16 +136,16 @@ const ViewMembers = () => {
                     employee.status === 1 ? "Deactivate Employee" : "Activate Employee"
                   }
                 >
-                  <FaPowerOff size={16} />
+                  <FaPowerOff size={14} />
                 </button>
 
                 <button
                   onClick={() => handleEmployeeClick(employee)}
-                  className="text-4xl text-blue-600 hover:text-blue-800 cursor-pointer"
+                  className="text-2xl text-blue-600 hover:text-blue-800"
                   data-tooltip-id="employee-tooltip"
                   data-tooltip-content="View Task Details"
                 >
-                  <FaEye size={32} />
+                  <FaEye />
                 </button>
               </div>
             </div>
@@ -164,8 +161,9 @@ const ViewMembers = () => {
 
       {showModal && selectedEmployee && (
         <div className="fixed inset-0 bg-black/50 z-[9998] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="relative bg-white w-full max-w-5xl rounded-xl shadow-xl flex flex-col md:flex-row mx-auto max-h-[90vh] overflow-hidden">
-            <div className="w-full md:w-1/2 border-b md:border-b-0 md:border-r p-4 overflow-y-auto max-h-[45vh] md:max-h-[90vh]">
+          <div className="relative bg-white w-full sm:max-w-3xl md:max-w-4xl rounded-xl shadow-2xl flex flex-col md:flex-row mx-auto max-h-[90vh]">
+            {/* Completed Tasks */}
+            <div className="w-full md:w-1/2 border-b md:border-b-0 md:border-r p-4 overflow-y-auto max-h-[40vh] md:max-h-[90vh]">
               <h3 className="text-xl font-bold text-green-700 mb-4">✅ Completed Tasks</h3>
               {completedTasks.length ? (
                 <ul className="space-y-3 text-sm text-gray-700">
@@ -183,7 +181,8 @@ const ViewMembers = () => {
               )}
             </div>
 
-            <div className="w-full md:w-1/2 p-4 overflow-y-auto max-h-[45vh] md:max-h-[90vh]">
+            {/* Assigned Tasks */}
+            <div className="w-full md:w-1/2 p-4 overflow-y-auto max-h-[40vh] md:max-h-[90vh]">
               <h3 className="text-xl font-bold text-blue-700 mb-4">📝 Assigned Tasks</h3>
               {assignedTasks.length ? (
                 <ul className="space-y-3 text-sm text-gray-700">
@@ -202,6 +201,7 @@ const ViewMembers = () => {
               )}
             </div>
 
+            {/* Close Button */}
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-sm hover:bg-red-600"
