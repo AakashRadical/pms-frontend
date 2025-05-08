@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaMale, FaFemale, FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaMale, FaFemale, FaEdit, FaPlus, FaTrash, FaSearch } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -8,6 +8,8 @@ import { LOCAL_URL } from '../../utils/constant';
 
 const ViewAssignedTasks = () => {
   const [groupedTasks, setGroupedTasks] = useState({});
+  const [filteredTasks, setFilteredTasks] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
   const [editTask, setEditTask] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [addTask, setAddTask] = useState(null);
@@ -37,7 +39,7 @@ const ViewAssignedTasks = () => {
       const employees = employeeRes.data;
 
       const taskRes = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
-      console.log('Fetched tasks:', taskRes.data); // Log tasks for debugging
+      console.log('Fetched tasks:', taskRes.data);
       const activeTasks = taskRes.data.filter((task) => task.status !== 'Completed');
 
       const grouped = employees.reduce((acc, emp) => {
@@ -61,11 +63,38 @@ const ViewAssignedTasks = () => {
       });
 
       setGroupedTasks(grouped);
+      setFilteredTasks(grouped); // Initialize filtered tasks
     } catch (error) {
       console.error('Error fetching data:', error.response?.data || error.message);
       toast.error('Failed to fetch tasks');
     }
   };
+
+  // Handle search filtering
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredTasks(groupedTasks); // Show all tasks if search is empty
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = Object.entries(groupedTasks).reduce((acc, [employeeId, employee]) => {
+      const matchesEmployee = employee.employeeName.toLowerCase().includes(query);
+      const matchingTasks = employee.tasks.filter((task) =>
+        task.title.toLowerCase().includes(query)
+      );
+
+      if (matchesEmployee || matchingTasks.length > 0) {
+        acc[employeeId] = {
+          ...employee,
+          tasks: matchesEmployee ? employee.tasks : matchingTasks, // Show all tasks if employee matches, else only matching tasks
+        };
+      }
+      return acc;
+    }, {});
+
+    setFilteredTasks(filtered);
+  }, [searchQuery, groupedTasks]);
 
   const handleEditClick = (task) => {
     setEditTask(task);
@@ -108,7 +137,6 @@ const ViewAssignedTasks = () => {
   };
 
   const handleDelete = async () => {
-
     try {
       await axios.delete(`${BACKEND_URL}/api/tasks/${editTask.task_id}`);
       toast.success(`Task deleted successfully`);
@@ -208,7 +236,6 @@ const ViewAssignedTasks = () => {
         })
       );
       await Promise.all(updatePromises);
-    
     } catch (error) {
       console.error('Error updating task order:', error.response?.data || error.message);
       toast.error('Failed to update task order');
@@ -218,16 +245,32 @@ const ViewAssignedTasks = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
-      <h2 className="text-3xl sm:text-4xl font-bold text-center text-indigo-700 mb-8 sm:mb-12">
-        📋 Assigned Tasks
-      </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 sm:mb-12">
+        <h2 className="text-3xl sm:text-4xl font-bold text-center sm:text-left text-indigo-700">
+          📋 Assigned Tasks
+        </h2>
+        <div className="mt-4 sm:mt-0 sm:ml-4 flex items-center w-full sm:w-auto max-w-sm">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by employee or task..."
+              className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+            />
+            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </div>
+        </div>
+      </div>
 
-      {Object.keys(groupedTasks).length === 0 ? (
-        <p className="text-center text-gray-600 text-base sm:text-lg">No employees found.</p>
+      {Object.keys(filteredTasks).length === 0 ? (
+        <p className="text-center text-gray-600 text-base sm:text-lg">
+          {searchQuery ? 'No matching employees or tasks found.' : 'No employees found.'}
+        </p>
       ) : (
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="grid gap-6 sm:gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {Object.entries(groupedTasks).map(([employeeId, { employeeName, gender, tasks }]) => (
+            {Object.entries(filteredTasks).map(([employeeId, { employeeName, gender, tasks }]) => (
               <div
                 key={employeeId}
                 className="bg-gradient-to-br from-blue-50 to-white border border-blue-200 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-4 sm:p-6"
@@ -248,7 +291,7 @@ const ViewAssignedTasks = () => {
                     onClick={() => handleAddClick(employeeId)}
                     className="bg-emerald-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm flex items-center gap-2 transition-colors duration-200"
                   >
-                    <FaPlus className="text-sm" /> 
+                    <FaPlus className="text-sm" />
                   </button>
                 </div>
 
