@@ -2,21 +2,28 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
+
 const Addmembers = () => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [joinDate, setJoinDate] = useState("");
-  const [gender, setGender] = useState("");
-  const [designation, setDesignation] = useState("");
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [joinDate, setJoinDate] = useState('');
+  const [gender, setGender] = useState('');
+  const [designation, setDesignation] = useState('');
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
   const handleSubmit = async () => {
-    const adminId = localStorage.getItem("id");
+    const adminId = localStorage.getItem('id');
 
     if (!adminId) {
-      toast.error("Admin ID not found");
+      toast.error('Admin ID not found');
+      return;
+    }
+
+    if (!password) {
+      toast.error('Password is required');
       return;
     }
 
@@ -26,21 +33,23 @@ const Addmembers = () => {
         firstName,
         lastName,
         email,
+        password,
         gender,
         designation,
         joinDate,
       });
 
-      toast.success("Employee added successfully");
+      toast.success('Employee added successfully');
       setFirstName('');
       setLastName('');
       setEmail('');
+      setPassword('');
       setJoinDate('');
       setGender('');
       setDesignation('');
     } catch (err) {
       console.error(err);
-      toast.error("Failed to add employee");
+      toast.error(err.response?.data?.message || 'Failed to add employee');
     }
   };
 
@@ -53,7 +62,9 @@ const Addmembers = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="firstName" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">First Name</label>
+            <label htmlFor="firstName" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              First Name
+            </label>
             <input
               value={firstName}
               type="text"
@@ -65,7 +76,9 @@ const Addmembers = () => {
           </div>
 
           <div>
-            <label htmlFor="lastName" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Last Name</label>
+            <label htmlFor="lastName" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Last Name
+            </label>
             <input
               value={lastName}
               type="text"
@@ -77,7 +90,9 @@ const Addmembers = () => {
           </div>
 
           <div className="md:col-span-2">
-            <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
             <input
               value={email}
               type="email"
@@ -89,16 +104,30 @@ const Addmembers = () => {
           </div>
 
           <div className="md:col-span-2">
+            <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              value={password}
+              type="password"
+              id="password"
+              placeholder="••••••••"
+              className="w-full border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          <div className="md:col-span-2">
             <span className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">Gender</span>
             <div className="flex flex-col sm:flex-row sm:gap-4">
-              {["male", "female", "other"].map((g) => (
+              {['male', 'female', 'other'].map((g) => (
                 <label key={g} className="inline-flex items-center text-sm text-gray-800 mb-2 sm:mb-0">
                   <input
                     type="radio"
                     name="gender"
                     value={g}
                     checked={gender === g}
-                    className="form-radio text-indigo-500 focus:ring-indigo-500 h-4 w-4"
+                    className="form-radio 학이indigo-500 focus:ring-indigo-500 h-4 w-4"
                     onChange={(e) => setGender(e.target.value)}
                   />
                   <span className="ml-2 capitalize text-xs sm:text-sm">{g}</span>
@@ -108,7 +137,9 @@ const Addmembers = () => {
           </div>
 
           <div>
-            <label htmlFor="designation" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Designation</label>
+            <label htmlFor="designation" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Designation
+            </label>
             <input
               value={designation}
               type="text"
@@ -120,7 +151,9 @@ const Addmembers = () => {
           </div>
 
           <div>
-            <label htmlFor="joinDate" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Join Date</label>
+            <label htmlFor="joinDate" className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Join Date
+            </label>
             <input
               value={joinDate}
               type="date"

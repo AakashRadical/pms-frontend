@@ -9,7 +9,7 @@ import {
   FolderViewOutlined,
   FileDoneOutlined,
 } from '@ant-design/icons';
-import { Button, Layout, Menu, Grid } from 'antd';
+import { Button, Layout, Menu, Grid, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -25,6 +25,8 @@ const { useBreakpoint } = Grid;
 const Home = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentPage, setCurrentPage] = useState("view-tasks");
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
   const screens = useBreakpoint();
   const navigate = useNavigate();
 
@@ -38,12 +40,13 @@ const Home = () => {
   }, [navigate]);
 
   const handleLogout = () => {
-    const confirmLogout = window.confirm("Are you sure you want to logout?");
-    if (confirmLogout) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('id');
-      navigate('/login');
-    }
+    setLogoutModalVisible(true);
+  };
+
+  const confirmLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('id');
+    navigate('/login');
   };
 
   const handleMenuClick = (e) => {
@@ -100,72 +103,74 @@ const Home = () => {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        collapsedWidth={screens.xs ? 0 : 80}
-        breakpoint="md"
-        onBreakpoint={(broken) => {
-          setCollapsed(broken);
-        }}
-        style={{ background: '#001529' }}
-      >
-        <div className="text-white text-xl text-center py-4 font-bold">
-          PMS
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[currentPage]}
-          onClick={handleMenuClick}
-          items={menuItems}
-        />
-      </Sider>
-
-      <Layout>
-        <Header
-          style={{
-            padding: 0,
-            background: '#001529',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingRight: 16,
-            paddingLeft: 16,
+    <div className="relative">
+      <Layout style={{ minHeight: '100vh', filter: logoutModalVisible ? 'blur(5px)' : 'none' }}>
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
+          collapsedWidth={screens.xs ? 0 : 80}
+          breakpoint="md"
+          onBreakpoint={(broken) => {
+            setCollapsed(broken);
           }}
+          style={{ background: '#001529' }}
         >
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
-            style={{
-              fontSize: '16px',
-              color: '#fff',
-            }}
+          <div className="text-white text-xl text-center py-4 font-bold">
+            PMS
+          </div>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[currentPage]}
+            onClick={handleMenuClick}
+            items={menuItems}
           />
-          <Button
-            type="primary"
-            icon={<LogoutOutlined />}
-            danger
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
-        </Header>
+        </Sider>
 
-        <Content
-          style={{
-            margin: '24px 16px',
-            padding: 24,
-            minHeight: 280,
-            background: '#fff',
-            borderRadius: '8px',
-          }}
-        >
-          {renderContent()}
-        </Content>
+        <Layout>
+          <Header
+            style={{
+              padding: 0,
+              background: '#001529',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingRight: 16,
+              paddingLeft: 16,
+            }}
+          >
+            <Button
+              type="text"
+              icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+              onClick={() => setCollapsed(!collapsed)}
+              style={{
+                fontSize: '16px',
+                color: '#fff',
+              }}
+            />
+            <Button
+              type="primary"
+              icon={<LogoutOutlined />}
+              danger
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          </Header>
+
+          <Content
+            style={{
+              margin: '24px 16px',
+              padding: 24,
+              minHeight: 280,
+              background: '#fff',
+              borderRadius: '8px',
+            }}
+          >
+            {renderContent()}
+          </Content>
+        </Layout>
       </Layout>
 
       <ToastContainer
@@ -178,7 +183,23 @@ const Home = () => {
         pauseOnFocusLoss
         pauseOnHover
       />
-    </Layout>
+
+      <Modal
+        title="Confirm Logout"
+        open={logoutModalVisible}
+        onOk={confirmLogout}
+        onCancel={() => setLogoutModalVisible(false)}
+        okText="Logout"
+        cancelText="Cancel"
+        okButtonProps={{ danger: true }}
+        centered
+        maskStyle={{
+          backdropFilter: 'blur(3px)',
+        }}
+      >
+        <p>Are you sure you want to logout?</p>
+      </Modal>
+    </div>
   );
 };
 
