@@ -241,9 +241,9 @@ const ViewAssignedTasks = () => {
   };
 
   return (
-    <div className="w-full px-2 sm:px-4">
+    <div className="w-full px-4 sm:px-6 py-6 bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-        <h2 className="text-2xl sm:text-3xl font-bold text-indigo-700 text-center sm:text-left">
+        <h2 className="text-2xl sm:text-3xl font-bold text-indigo-900 text-center sm:text-left">
           📋 Assigned Tasks
         </h2>
         <div className="mt-3 sm:mt-0 sm:ml-4 flex items-center w-full sm:w-64">
@@ -253,15 +253,15 @@ const ViewAssignedTasks = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-md border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+              className="w-full pl-8 pr-3 py-1.5 rounded-md border border-indigo-200 bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
             />
-            <FaSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+            <FaSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-indigo-400 text-sm" />
           </div>
         </div>
       </div>
 
       {Object.keys(filteredTasks).length === 0 ? (
-        <p className="text-center text-gray-600 text-sm sm:text-base">
+        <p className="text-center text-indigo-600 text-sm sm:text-base font-medium">
           {searchQuery ? 'No matching tasks found.' : 'No employees found.'}
         </p>
       ) : (
@@ -270,25 +270,25 @@ const ViewAssignedTasks = () => {
             {Object.entries(filteredTasks).map(([employeeId, { employeeName, gender, tasks }]) => (
               <div
                 key={employeeId}
-                className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 sm:p-4 mb-4 break-inside-avoid"
+                className="bg-white border border-indigo-100 rounded-xl shadow-md p-4 sm:p-5 mb-4 break-inside-avoid bg-gradient-to-r from-indigo-50/50 to-purple-50/50"
               >
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3">
-                  <h3 className="text-base sm:text-lg font-semibold text-blue-700 flex items-center gap-1.5 mb-2 sm:mb-0">
+                  <h3 className="text-base sm:text-lg font-semibold text-indigo-900 flex items-center gap-1.5 mb-2 sm:mb-0">
                     {gender === 'female' ? (
-                      <FaFemale className="text-pink-500 text-lg" />
+                      <FaFemale className="text-indigo-500 text-lg" />
                     ) : (
-                      <FaMale className="text-blue-500 text-lg" />
+                      <FaMale className="text-purple-500 text-lg" />
                     )}
                     <span className="truncate max-w-[150px] sm:max-w-[200px]">{employeeName}</span>
-                    <span className="text-gray-500 text-xs sm:text-sm ml-1">
+                    <span className="text-indigo-500 text-xs sm:text-sm ml-1">
                       ({tasks.length} task{tasks.length !== 1 ? 's' : ''})
                     </span>
                   </h3>
                   <button
                     onClick={() => handleAddClick(employeeId)}
-                    className="bg-emerald-500 cursor-pointer hover:bg-emerald-600 text-white px-2 py-1 rounded-md text-xs sm:text-sm flex items-center gap-1"
+                    className="bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white px-2 py-1 rounded-md text-xs sm:text-sm flex items-center gap-1 transition-all duration-200"
                   >
-                    <FaPlus className="text-lg" /> 
+                    <FaPlus className="text-lg" />
                   </button>
                 </div>
 
@@ -300,7 +300,7 @@ const ViewAssignedTasks = () => {
                       ref={provided.innerRef}
                     >
                       {tasks.length === 0 ? (
-                        <li className="text-center text-gray-500 text-xs sm:text-sm py-3">
+                        <li className="text-center text-indigo-600 text-xs sm:text-sm py-3 font-medium">
                           No active tasks.
                         </li>
                       ) : (
@@ -315,14 +315,14 @@ const ViewAssignedTasks = () => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className="bg-gray-50 border border-gray-200 rounded-md p-2 flex items-center justify-between"
+                                className="bg-indigo-50/50 border border-indigo-200 rounded-md p-2 flex items-center justify-between"
                               >
-                                <span className="text-gray-800 text-xs sm:text-sm font-medium truncate flex-1 mr-2">
+                                <span className="text-indigo-800 text-xs sm:text-sm font-medium truncate flex-1 mr-2">
                                   {task.title}
                                 </span>
                                 <button
                                   onClick={() => handleEditClick(task)}
-                                  className="text-indigo-600 hover:text-indigo-800"
+                                  className="text-purple-600 hover:text-purple-800 transition-all duration-200"
                                 >
                                   <FaEdit className="text-lg" />
                                 </button>
@@ -342,15 +342,15 @@ const ViewAssignedTasks = () => {
       )}
 
       {editTask && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
-          <div className="bg-white w-full max-w-md rounded-lg p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-md rounded-xl p-4 sm:p-6 max-h-[85vh] overflow-y-auto bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
             {!showDeleteConfirm ? (
               <>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Edit Task</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-indigo-900 mb-4">Edit Task</h3>
                 <div className="grid grid-cols-1 gap-3">
                   {['title', 'description'].map((field) => (
                     <div key={field}>
-                      <label className="block text-gray-700 text-sm font-medium capitalize mb-1">
+                      <label className="block text-indigo-800 text-sm font-medium capitalize mb-1">
                         {field}
                       </label>
                       {field === 'description' ? (
@@ -359,7 +359,7 @@ const ViewAssignedTasks = () => {
                           value={editForm[field] || ''}
                           onChange={(e) => handleChange(e, 'edit')}
                           placeholder={field}
-                          className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm resize-none"
+                          className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
                           rows="3"
                         />
                       ) : (
@@ -368,40 +368,40 @@ const ViewAssignedTasks = () => {
                           value={editForm[field] || ''}
                           onChange={(e) => handleChange(e, 'edit')}
                           placeholder={field}
-                          className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                          className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                         />
                       )}
                     </div>
                   ))}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-gray-700 text-sm font-medium mb-1">Start Date</label>
+                      <label className="block text-indigo-800 text-sm font-medium mb-1">Start Date</label>
                       <input
                         type="date"
                         name="start_date"
                         value={formatDate(editForm.start_date)}
                         onChange={(e) => handleChange(e, 'edit')}
-                        className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                        className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                       />
                     </div>
                     <div>
-                      <label className="block text-gray-700 text-sm font-medium mb-1">Due Date</label>
+                      <label className="block text-indigo-800 text-sm font-medium mb-1">Due Date</label>
                       <input
                         type="date"
                         name="due_date"
                         value={formatDate(editForm.due_date)}
                         onChange={(e) => handleChange(e, 'edit')}
-                        className="w-full border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                        className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-1">Priority</label>
+                    <label className="block text-indigo-800 text-sm font-medium mb-1">Priority</label>
                     <select
                       name="priority"
                       value={editForm.priority || ''}
                       onChange={(e) => handleChange(e, 'edit')}
-                      className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                      className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                     >
                       <option value="">Select Priority</option>
                       <option>Low</option>
@@ -410,12 +410,12 @@ const ViewAssignedTasks = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-1">Status</label>
+                    <label className="block text-indigo-800 text-sm font-medium mb-1">Status</label>
                     <select
                       name="status"
                       value={editForm.status || ''}
                       onChange={(e) => handleChange(e, 'edit')}
-                      className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                      className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                     >
                       <option value="">Select Status</option>
                       <option>Todo</option>
@@ -425,33 +425,33 @@ const ViewAssignedTasks = () => {
                   </div>
                   {editForm.status === 'Completed' && (
                     <div>
-                      <label className="block text-gray-700 text-sm font-medium mb-1">Completion Date</label>
+                      <label className="block text-indigo-800 text-sm font-medium mb-1">Completion Date</label>
                       <input
                         type="date"
                         name="completion_date"
                         value={editForm.completion_date}
                         onChange={(e) => handleChange(e, 'edit')}
-                        className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                        className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                       />
                     </div>
                   )}
                   <div className="flex flex-col sm:flex-row justify-between gap-2 mt-4">
                     <button
                       onClick={() => setShowDeleteConfirm(true)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                      className="bg-purple-500 cursor-pointer hover:bg-purple-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                     >
                       <FaTrash className="text-xs" /> Delete
                     </button>
                     <div className="flex gap-2">
                       <button
                         onClick={handleUpdate}
-                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                        className="bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                       >
                         <span>✅ Save</span>
                       </button>
                       <button
                         onClick={closeEditModal}
-                        className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                        className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                       >
                         <span>❌ Cancel</span>
                       </button>
@@ -461,20 +461,20 @@ const ViewAssignedTasks = () => {
               </>
             ) : (
               <>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h3>
-                <p className="text-gray-600 text-sm mb-4">
+                <h3 className="text-lg sm:text-xl font-semibold text-indigo-900 mb-4">Confirm Deletion</h3>
+                <p className="text-indigo-700 text-sm mb-4">
                   Are you sure you want to delete the task "<strong>{editForm.title}</strong>"? This action cannot be undone.
                 </p>
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end  gap-2">
                   <button
                     onClick={handleDelete}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                    className="bg-purple-500 cursor-pointer hover:bg-purple-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                   >
                     <FaTrash className="text-xs" /> Delete
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                    className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                   >
                     <span>❌ Cancel</span>
                   </button>
@@ -486,63 +486,63 @@ const ViewAssignedTasks = () => {
       )}
 
       {addTask && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
-          <div className="bg-white w-full max-w-md rounded-lg p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Add New Task</h3>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-md rounded-xl p-4 sm:p-6 max-h-[85vh] overflow-y-auto bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
+            <h3 className="text-lg sm:text-xl font-semibold text-indigo-900 mb-4">Add New Task</h3>
             <div className="grid grid-cols-1 gap-3">
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-1">
-                  Title <span className="text-red-500">*</span>
+                <label className="block text-indigo-800 text-sm font-medium mb-1">
+                  Title <span className="text-purple-500">*</span>
                 </label>
                 <input
                   name="title"
                   value={addForm.title}
                   onChange={(e) => handleChange(e, 'add')}
                   placeholder="Enter task title"
-                  className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                  className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                   required
                 />
               </div>
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-1">Description</label>
+                <label className="block text-indigo-800 text-sm font-medium mb-1">Description</label>
                 <textarea
                   name="description"
                   value={addForm.description}
                   onChange={(e) => handleChange(e, 'add')}
                   placeholder="Enter task description"
-                  className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm resize-none"
+                  className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
                   rows="3"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-1">Start Date</label>
+                  <label className="block text-indigo-800 text-sm font-medium mb-1">Start Date</label>
                   <input
                     type="date"
                     name="start_date"
                     value={addForm.start_date}
                     onChange={(e) => handleChange(e, 'add')}
-                    className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                    className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-1">Due Date</label>
+                  <label className="block text-indigo-800 text-sm font-medium mb-1">Due Date</label>
                   <input
                     type="date"
                     name="due_date"
                     value={addForm.due_date}
                     onChange={(e) => handleChange(e, 'add')}
-                    className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                    className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-1">Priority</label>
+                <label className="block text-indigo-800 text-sm font-medium mb-1">Priority</label>
                 <select
                   name="priority"
                   value={addForm.priority}
                   onChange={(e) => handleChange(e, 'add')}
-                  className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                  className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                 >
                   <option value="">Select Priority</option>
                   <option>Low</option>
@@ -551,12 +551,12 @@ const ViewAssignedTasks = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-gray-700 text-sm font-medium mb-1">Status</label>
+                <label className="block text-indigo-800 text-sm font-medium mb-1">Status</label>
                 <select
                   name="status"
                   value={addForm.status}
                   onChange={(e) => handleChange(e, 'add')}
-                  className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                  className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                 >
                   <option value="">Select Status</option>
                   <option>Todo</option>
@@ -567,13 +567,13 @@ const ViewAssignedTasks = () => {
               <div className="flex justify-end gap-2 mt-4">
                 <button
                   onClick={handleAddTask}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                  className="bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                 >
                   <FaPlus className="text-xs" /> Add Task
                 </button>
                 <button
                   onClick={closeAddModal}
-                  className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                  className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                 >
                   <span>❌ Cancel</span>
                 </button>

@@ -67,7 +67,7 @@ const Home = () => {
         return <CompletedTasks />;
       default:
         return (
-          <h1 className="text-3xl font-semibold text-gray-700">
+          <h1 className="text-3xl font-semibold text-indigo-900">
             Welcome to Admin Dashboard
           </h1>
         );
@@ -164,8 +164,9 @@ const Home = () => {
               margin: '24px 16px',
               padding: 24,
               minHeight: 280,
-              background: '#fff',
-              borderRadius: '8px',
+              background: 'linear-gradient(to bottom right, #e0e7ff, #f3e8ff)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
             }}
           >
             {renderContent()}
@@ -193,8 +194,10 @@ const Home = () => {
         cancelText="Cancel"
         okButtonProps={{ danger: true }}
         centered
-        maskStyle={{
-          backdropFilter: 'blur(3px)',
+        styles={{
+          mask: {
+            backdropFilter: 'blur(3px)',
+          },
         }}
       >
         <p>Are you sure you want to logout?</p>

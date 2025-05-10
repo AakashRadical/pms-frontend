@@ -80,27 +80,27 @@ const ViewMembers = () => {
   const completedTasks = employeeTasks.filter(task => task.status === 'Completed');
 
   return (
-    <div className="w-full h-full px-4 sm:px-6 py-6 overflow-y-auto">
+    <div className="w-full h-full px-4 sm:px-6 py-6 overflow-y-auto bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl">
       <ToastContainer position="top-right" autoClose={2000} />
-      <h2 className="text-3xl font-bold text-blue-800 text-center mb-6">Members Under You</h2>
+      <h2 className="text-3xl font-bold text-indigo-900 text-center mb-6">Members Under You</h2>
 
       <div className="flex justify-center gap-4 mb-6 flex-wrap">
         <button
           onClick={() => setActiveTab('active')}
-          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
             activeTab === 'active'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white text-blue-600 border border-blue-300'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'
           }`}
         >
           Active Employees
         </button>
         <button
           onClick={() => setActiveTab('inactive')}
-          className={`px-4 py-2 rounded-lg font-medium transition-all ${
+          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
             activeTab === 'inactive'
-              ? 'bg-red-600 text-white'
-              : 'bg-white text-red-600 border border-red-300'
+              ? 'bg-purple-600 text-white shadow-md'
+              : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'
           }`}
         >
           Deactivated Employees
@@ -112,13 +112,13 @@ const ViewMembers = () => {
           {filteredEmployees.map(employee => (
             <div
               key={employee.id}
-              className="bg-white border border-gray-200 rounded-xl shadow p-5 hover:shadow-md transition relative"
+              className="bg-white border border-indigo-100 rounded-xl shadow-md p-5 hover:shadow-lg transition-all duration-200 bg-gradient-to-r from-indigo-50/50 to-purple-50/50"
             >
-              <h3 className="text-lg font-semibold text-blue-700 mb-2 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-indigo-900 mb-2 flex items-center gap-2">
                 {employee.gender === 'female' ? (
-                  <FaFemale className="text-pink-500" />
+                  <FaFemale className="text-indigo-500" />
                 ) : (
-                  <FaMale className="text-blue-500" />
+                  <FaMale className="text-purple-500" />
                 )}
                 {employee.first_name} {employee.last_name}
               </h3>
@@ -126,10 +126,10 @@ const ViewMembers = () => {
               <div className="flex justify-between items-center mt-4">
                 <button
                   onClick={(e) => handleStatusToggle(e, employee)}
-                  className={`px-2 py-1 text-sm rounded-full transition ${
+                  className={`px-2 py-1 text-sm rounded-full transition-all duration-200 ${
                     employee.status === 1
-                      ? 'bg-red-500 hover:bg-red-600 text-white'
-                      : 'bg-green-500 hover:bg-green-600 text-white'
+                      ? 'bg-purple-500 cursor-pointer hover:bg-purple-600 text-white'
+                      : 'bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white'
                   }`}
                   data-tooltip-id="employee-tooltip"
                   data-tooltip-content={
@@ -141,7 +141,7 @@ const ViewMembers = () => {
 
                 <button
                   onClick={() => handleEmployeeClick(employee)}
-                  className="text-2xl text-blue-600 hover:text-blue-800"
+                  className="text-2xl cursor-pointer text-indigo-600 hover:text-indigo-800 transition-all duration-200"
                   data-tooltip-id="employee-tooltip"
                   data-tooltip-content="View Task Details"
                 >
@@ -152,7 +152,7 @@ const ViewMembers = () => {
           ))}
         </div>
       ) : (
-        <div className="text-center text-gray-500 text-lg italic mt-12">
+        <div className="text-center text-indigo-600 text-lg font-medium italic mt-12">
           No members found.
         </div>
       )}
@@ -161,50 +161,50 @@ const ViewMembers = () => {
 
       {showModal && selectedEmployee && (
         <div className="fixed inset-0 bg-black/50 z-[9998] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-          <div className="relative bg-white w-full sm:max-w-3xl md:max-w-4xl rounded-xl shadow-2xl flex flex-col md:flex-row mx-auto max-h-[90vh]">
+          <div className="relative bg-white w-full sm:max-w-3xl md:max-w-4xl rounded-xl shadow-2xl flex flex-col md:flex-row mx-auto max-h-[90vh] bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
             {/* Completed Tasks */}
             <div className="w-full md:w-1/2 border-b md:border-b-0 md:border-r p-4 overflow-y-auto max-h-[40vh] md:max-h-[90vh]">
-              <h3 className="text-xl font-bold text-green-700 mb-4">✅ Completed Tasks</h3>
+              <h3 className="text-xl font-bold text-indigo-900 mb-4">✅ Completed Tasks</h3>
               {completedTasks.length ? (
-                <ul className="space-y-3 text-sm text-gray-700">
+                <ul className="space-y-3 text-sm text-indigo-700">
                   {completedTasks.map(task => (
-                    <li key={task.task_id} className="border p-3 rounded-lg bg-green-50">
+                    <li key={task.task_id} className="border border-indigo-100 p-3 rounded-lg bg-indigo-50/50">
                       <div className="font-semibold">{task.title}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-indigo-500">
                         Completed on: {formatDate(task.completion_date)}
                       </div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500">No completed tasks.</p>
+                <p className="text-sm text-indigo-600">No completed tasks.</p>
               )}
             </div>
 
             {/* Assigned Tasks */}
             <div className="w-full md:w-1/2 p-4 overflow-y-auto max-h-[40vh] md:max-h-[90vh]">
-              <h3 className="text-xl font-bold text-blue-700 mb-4">📝 Assigned Tasks</h3>
+              <h3 className="text-xl font-bold text-indigo-900 mb-4">📝 Assigned Tasks</h3>
               {assignedTasks.length ? (
-                <ul className="space-y-3 text-sm text-gray-700">
+                <ul className="space-y-3 text-sm text-indigo-700">
                   {assignedTasks.map(task => (
-                    <li key={task.task_id} className="border p-3 rounded-lg bg-blue-50">
+                    <li key={task.task_id} className="border border-indigo-100 p-3 rounded-lg bg-purple-50/50">
                       <div className="font-semibold">{task.title}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-indigo-500">
                         Due by: {formatDate(task.due_date)}
                       </div>
-                      <div className="text-xs text-gray-500">Status: {task.status}</div>
+                      <div className="text-xs text-indigo-500">Status: {task.status}</div>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500">No active tasks assigned.</p>
+                <p className="text-sm text-indigo-600">No active tasks assigned.</p>
               )}
             </div>
 
             {/* Close Button */}
             <button
               onClick={() => setShowModal(false)}
-              className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-full text-sm hover:bg-red-600"
+              className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-sm hover:bg-purple-600 transition-all duration-200"
             >
               ✕
             </button>

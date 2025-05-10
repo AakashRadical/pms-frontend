@@ -105,8 +105,8 @@ const CompletedTasks = () => {
   };
 
   return (
-    <div className="w-full px-2 sm:px-4">
-      <h2 className="text-2xl sm:text-3xl font-bold text-indigo-700 text-center mb-6">
+    <div className="w-full px-4 sm:px-6 py-6 bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl">
+      <h2 className="text-2xl sm:text-3xl font-bold text-indigo-900 text-center mb-6">
         ✅ Completed Tasks by Date
       </h2>
 
@@ -115,32 +115,32 @@ const CompletedTasks = () => {
           type="date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
-          className="w-full max-w-xs border border-gray-300 px-3 py-2 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+          className="w-full cursor-pointer max-w-xs border border-indigo-200 px-3 py-2 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
         />
       </div>
 
       {selectedDate && Object.keys(groupedCompleted).length > 0 ? (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
           {Object.keys(groupedCompleted).map(employeeKey => (
             <div
               key={employeeKey}
-              className="bg-white border border-gray-200 rounded-lg shadow-sm p-3 sm:p-4"
+              className="bg-white border border-indigo-100 rounded-xl shadow-md p-4 sm:p-5 bg-gradient-to-r from-indigo-50/50 to-purple-50/50"
             >
-              <h3 className="text-base sm:text-lg font-semibold text-blue-700 mb-3 flex items-center gap-2">
+              <h3 className="text-base sm:text-lg font-semibold text-indigo-900 mb-3 flex items-center gap-2">
                 👤 {employeeKey.split('-')[1]}
               </h3>
-              <ul className="space-y-2 text-gray-700 text-sm">
+              <ul className="space-y-2 text-indigo-700 text-sm">
                 {groupedCompleted[employeeKey].map(task => (
                   <li key={task.task_id} className="flex justify-between items-center">
                     <div>
-                      <span className="font-medium text-gray-800">{task.title}</span>{' '}
-                      <span className="text-gray-500 text-xs sm:text-sm">
+                      <span className="font-medium text-indigo-800">{task.title}</span>{' '}
+                      <span className="text-indigo-500 cursor-pointer text-xs sm:text-sm">
                         (Completed: {formatDateDisplay(task.completion_date)})
                       </span>
                     </div>
                     <button
                       onClick={() => handleEdit(task)}
-                      className="text-indigo-600 hover:text-indigo-800 text-sm"
+                      className="text-purple-600 cursor-pointer hover:text-purple-800 text-sm transition-all duration-200"
                     >
                       Edit
                     </button>
@@ -151,29 +151,29 @@ const CompletedTasks = () => {
           ))}
         </div>
       ) : selectedDate ? (
-        <div className="text-center text-gray-600 text-sm sm:text-base mt-6">
+        <div className="text-center text-indigo-600 text-sm sm:text-base font-medium mt-6">
           No completed tasks found for {formatDateDisplay(selectedDate)}.
         </div>
       ) : (
-        <div className="text-center text-gray-600 text-sm sm:text-base mt-6">
+        <div className="text-center text-indigo-600 text-sm sm:text-base font-medium mt-6">
           Please select a date to view completed tasks.
         </div>
       )}
 
       {editTask && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
-          <div className="bg-white w-full max-w-md rounded-lg p-4 sm:p-6 max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
+          <div className="bg-white w-full max-w-md rounded-xl p-4 sm:p-6 max-h-[85vh] overflow-y-auto bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
             {!showDeleteConfirm ? (
               <>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Edit Task Status</h3>
-                <p className="text-gray-600 text-sm font-medium mb-4">{editTask.title}</p>
+                <h3 className="text-lg sm:text-xl font-semibold text-indigo-900 mb-4">Edit Task Status</h3>
+                <p className="text-indigo-700 text-sm font-medium mb-4">{editTask.title}</p>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-1">Status</label>
+                    <label className="block text-indigo-800 text-sm font-medium mb-1">Status</label>
                     <select
                       value={editStatus}
                       onChange={(e) => setEditStatus(e.target.value)}
-                      className="w-full border border-gray-300 px-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                      className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                     >
                       <option value="Completed">Completed</option>
                       <option value="Todo">Todo</option>
@@ -182,20 +182,20 @@ const CompletedTasks = () => {
                   <div className="flex flex-col sm:flex-row justify-between gap-2 mt-4">
                     <button
                       onClick={() => setShowDeleteConfirm(true)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                      className="bg-purple-500 cursor-pointer hover:bg-purple-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                     >
                       <FaTrash className="text-xs" /> Delete
                     </button>
                     <div className="flex gap-2">
                       <button
                         onClick={handleUpdate}
-                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                        className="bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                       >
                         <span>✅ Save</span>
                       </button>
                       <button
                         onClick={closeEditModal}
-                        className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                        className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                       >
                         <span>❌ Cancel</span>
                       </button>
@@ -205,20 +205,20 @@ const CompletedTasks = () => {
               </>
             ) : (
               <>
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Confirm Deletion</h3>
-                <p className="text-gray-600 text-sm mb-4">
+                <h3 className="text-lg sm:text-xl font-semibold text-indigo-900 mb-4">Confirm Deletion</h3>
+                <p className="text-indigo-700 text-sm mb-4">
                   Are you sure you want to delete the task "<strong>{editTask.title}</strong>"? This action cannot be undone.
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
                     onClick={handleDelete}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                    className="bg-purple-500 cursor-pointer hover:bg-purple-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                   >
                     <FaTrash className="text-xs" /> Delete
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="bg-gray-400 hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1"
+                    className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
                   >
                     <span>❌ Cancel</span>
                   </button>
