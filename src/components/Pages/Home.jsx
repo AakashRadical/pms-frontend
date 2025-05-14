@@ -9,7 +9,8 @@ import {
   FolderViewOutlined,
   FileDoneOutlined,
 } from '@ant-design/icons';
-import { Button, Layout, Menu, Grid, Modal } from 'antd';
+import { Button, Layout, Menu, Grid, Modal, Spin } from 'antd';
+
 import { useNavigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -26,6 +27,7 @@ const Home = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [currentPage, setCurrentPage] = useState("view-tasks");
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+const [loading, setLoading] = useState(false);
 
   const screens = useBreakpoint();
   const navigate = useNavigate();
@@ -51,6 +53,9 @@ const Home = () => {
 
   const handleMenuClick = (e) => {
     setCurrentPage(e.key);
+    if (screens.xs) {
+      setCollapsed(true); // Auto-collapse sidebar on menu click for small screens
+    }
   };
 
   const renderContent = () => {
@@ -114,7 +119,13 @@ const Home = () => {
           onBreakpoint={(broken) => {
             setCollapsed(broken);
           }}
-          style={{ background: '#001529' }}
+          style={{
+            background: '#001529',
+            position: screens.xs && !collapsed ? 'fixed' : 'relative',
+            height: screens.xs && !collapsed ? '100vh' : 'auto',
+            zIndex: screens.xs && !collapsed ? 1000 : 'auto',
+            boxShadow: screens.xs && !collapsed ? '2px 0 8px rgba(0, 0, 0, 0.15)' : 'none',
+          }}
         >
           <div className="text-white text-xl text-center py-4 font-bold">
             PMS
@@ -127,6 +138,13 @@ const Home = () => {
             items={menuItems}
           />
         </Sider>
+
+        {screens.xs && !collapsed && (
+          <div
+            className="fixed inset-0 bg-black/50 z-[999]"
+            onClick={() => setCollapsed(true)}
+          ></div>
+        )}
 
         <Layout>
           <Header
@@ -159,18 +177,22 @@ const Home = () => {
             </Button>
           </Header>
 
-          <Content
-            style={{
-              margin: '24px 16px',
-              padding: 24,
-              minHeight: 280,
-              background: 'linear-gradient(to bottom right, #e0e7ff, #f3e8ff)',
-              borderRadius: '12px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-            }}
-          >
-            {renderContent()}
-          </Content>
+    <Content
+  style={{
+    margin: '24px 16px',
+    padding: 24,
+    minHeight: 280,
+    background: 'linear-gradient(to bottom right, #e0e7ff, #f3e8ff)',
+    borderRadius: '12px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  }}
+>
+  <Spin spinning={loading} size="large" tip="Loading..." style={{ minHeight: '200px' }}>
+    {renderContent()}
+  </Spin>
+</Content>
+
+
         </Layout>
       </Layout>
 

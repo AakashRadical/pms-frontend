@@ -12,6 +12,7 @@ const UserDashboard = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [loading, setLoading] = useState(true); // 🔹 Loader state
 
   const navigate = useNavigate();
   const employeeId = localStorage.getItem('employeeId');
@@ -25,6 +26,7 @@ const UserDashboard = () => {
     }
 
     const fetchTasks = async () => {
+      setLoading(true); // 🔹 Start loading
       try {
         const response = await axios.get(`${BACKEND_URL}/api/tasks/employee/${employeeId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` },
@@ -35,6 +37,8 @@ const UserDashboard = () => {
       } catch (error) {
         console.error('Error fetching tasks:', error);
         toast.error('Failed to fetch tasks');
+      } finally {
+        setLoading(false); // 🔹 Stop loading
       }
     };
 
@@ -43,10 +47,6 @@ const UserDashboard = () => {
 
   const activeTasks = tasks.filter(task => task.status?.toLowerCase() !== 'completed');
   const completedTasks = tasks.filter(task => task.status?.toLowerCase() === 'completed');
-
-  // useEffect(() => {
-  //   console.log("All tasks:", tasks);
-  // }, [tasks]);
 
   const handleLogoutConfirm = () => {
     localStorage.removeItem('employeeToken');
@@ -114,7 +114,11 @@ const UserDashboard = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-lg p-6 sm:p-8">
-          {activeTab === 'active' ? (
+          {loading ? (
+            <div className="flex justify-center items-center py-16">
+              <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : activeTab === 'active' ? (
             activeTasks.length === 0 ? (
               <p className="text-center text-indigo-600 text-sm font-medium">No active tasks assigned.</p>
             ) : (

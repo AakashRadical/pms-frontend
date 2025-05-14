@@ -22,6 +22,7 @@ const ViewAssignedTasks = () => {
     position: 0,
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
   const adminId = localStorage.getItem('id');
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -33,6 +34,7 @@ const ViewAssignedTasks = () => {
   }, [adminId]);
 
   const fetchTasks = async () => {
+    setLoading(true);
     try {
       const employeeRes = await axios.get(`${BACKEND_URL}/api/employee/${adminId}`);
       const employees = employeeRes.data;
@@ -65,6 +67,8 @@ const ViewAssignedTasks = () => {
     } catch (error) {
       console.error('Error fetching data:', error.response?.data || error.message);
       toast.error('Failed to fetch tasks');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -113,7 +117,16 @@ const ViewAssignedTasks = () => {
   const formatDate = (dateStr) =>
     dateStr ? new Date(dateStr).toISOString().split('T')[0] : '';
 
+  // Calculate min completion date based on start date
+  const getMinCompletionDate = () => {
+    if (!editForm.start_date) return null;
+    const startDate = new Date(editForm.start_date);
+    startDate.setDate(startDate.getDate()); // Completion date can be same as start date
+    return startDate.toISOString().split('T')[0];
+  };
+
   const handleUpdate = async () => {
+    setLoading(true);
     const updatedForm = {
       ...editForm,
       completion_date:
@@ -130,10 +143,13 @@ const ViewAssignedTasks = () => {
     } catch (error) {
       console.error('Error updating task:', error.response?.data || error.message);
       toast.error('Failed to update task');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDelete = async () => {
+    setLoading(true);
     try {
       await axios.delete(`${BACKEND_URL}/api/tasks/${editTask.task_id}`);
       toast.success(`Task deleted successfully`);
@@ -148,6 +164,8 @@ const ViewAssignedTasks = () => {
       } else {
         toast.error('Failed to delete task');
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -189,6 +207,7 @@ const ViewAssignedTasks = () => {
       return;
     }
 
+    setLoading(true);
     try {
       await axios.post(`${BACKEND_URL}/api/tasks/create-task`, {
         ...addForm,
@@ -201,6 +220,8 @@ const ViewAssignedTasks = () => {
     } catch (error) {
       console.error('Error creating task:', error.response?.data || error.message);
       toast.error('❌ Failed to assign task');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -211,6 +232,7 @@ const ViewAssignedTasks = () => {
       return;
     }
 
+    setLoading(true);
     const employeeId = source.droppableId;
     const newGroupedTasks = { ...groupedTasks };
     const tasks = [...newGroupedTasks[employeeId].tasks];
@@ -237,11 +259,42 @@ const ViewAssignedTasks = () => {
       console.error('Error updating task order:', error.response?.data || error.message);
       toast.error('Failed to update task order');
       await fetchTasks();
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="w-full px-4 sm:px-6 py-6 bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl">
+      {/* Loader Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <svg
+              className="animate-spin h-10 w-10 text-indigo-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <p className="mt-2 text-white text-sm font-medium">Loading...</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <h2 className="text-2xl sm:text-3xl font-bold text-indigo-900 text-center sm:text-left">
           📋 Assigned Tasks
@@ -254,6 +307,7 @@ const ViewAssignedTasks = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search tasks..."
               className="w-full pl-8 pr-3 py-1.5 rounded-md border border-indigo-200 bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+              disabled={loading}
             />
             <FaSearch className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-indigo-400 text-sm" />
           </div>
@@ -287,6 +341,7 @@ const ViewAssignedTasks = () => {
                   <button
                     onClick={() => handleAddClick(employeeId)}
                     className="bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white px-2 py-1 rounded-md text-xs sm:text-sm flex items-center gap-1 transition-all duration-200"
+                    disabled={loading}
                   >
                     <FaPlus className="text-lg" />
                   </button>
@@ -323,6 +378,7 @@ const ViewAssignedTasks = () => {
                                 <button
                                   onClick={() => handleEditClick(task)}
                                   className="text-purple-600 hover:text-purple-800 transition-all duration-200"
+                                  disabled={loading}
                                 >
                                   <FaEdit className="text-lg" />
                                 </button>
@@ -361,6 +417,7 @@ const ViewAssignedTasks = () => {
                           placeholder={field}
                           className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
                           rows="3"
+                          disabled={loading}
                         />
                       ) : (
                         <input
@@ -369,6 +426,7 @@ const ViewAssignedTasks = () => {
                           onChange={(e) => handleChange(e, 'edit')}
                           placeholder={field}
                           className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                          disabled={loading}
                         />
                       )}
                     </div>
@@ -382,6 +440,7 @@ const ViewAssignedTasks = () => {
                         value={formatDate(editForm.start_date)}
                         onChange={(e) => handleChange(e, 'edit')}
                         className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                        disabled={loading}
                       />
                     </div>
                     <div>
@@ -392,6 +451,7 @@ const ViewAssignedTasks = () => {
                         value={formatDate(editForm.due_date)}
                         onChange={(e) => handleChange(e, 'edit')}
                         className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                        disabled={loading}
                       />
                     </div>
                   </div>
@@ -402,6 +462,7 @@ const ViewAssignedTasks = () => {
                       value={editForm.priority || ''}
                       onChange={(e) => handleChange(e, 'edit')}
                       className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                      disabled={loading}
                     >
                       <option value="">Select Priority</option>
                       <option>Low</option>
@@ -416,6 +477,7 @@ const ViewAssignedTasks = () => {
                       value={editForm.status || ''}
                       onChange={(e) => handleChange(e, 'edit')}
                       className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                      disabled={loading}
                     >
                       <option value="">Select Status</option>
                       <option>Todo</option>
@@ -431,7 +493,9 @@ const ViewAssignedTasks = () => {
                         name="completion_date"
                         value={editForm.completion_date}
                         onChange={(e) => handleChange(e, 'edit')}
+                        min={getMinCompletionDate()} // Restrict completion date to start date or later
                         className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                        disabled={loading}
                       />
                     </div>
                   )}
@@ -439,6 +503,7 @@ const ViewAssignedTasks = () => {
                     <button
                       onClick={() => setShowDeleteConfirm(true)}
                       className="bg-purple-500 cursor-pointer hover:bg-purple-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
+                      disabled={loading}
                     >
                       <FaTrash className="text-xs" /> Delete
                     </button>
@@ -446,12 +511,14 @@ const ViewAssignedTasks = () => {
                       <button
                         onClick={handleUpdate}
                         className="bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
+                        disabled={loading}
                       >
                         <span>✅ Save</span>
                       </button>
                       <button
                         onClick={closeEditModal}
                         className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
+                        disabled={loading}
                       >
                         <span>❌ Cancel</span>
                       </button>
@@ -465,16 +532,18 @@ const ViewAssignedTasks = () => {
                 <p className="text-indigo-700 text-sm mb-4">
                   Are you sure you want to delete the task "<strong>{editForm.title}</strong>"? This action cannot be undone.
                 </p>
-                <div className="flex justify-end  gap-2">
+                <div className="flex justify-end gap-2">
                   <button
                     onClick={handleDelete}
                     className="bg-purple-500 cursor-pointer hover:bg-purple-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
+                    disabled={loading}
                   >
                     <FaTrash className="text-xs" /> Delete
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
                     className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
+                    disabled={loading}
                   >
                     <span>❌ Cancel</span>
                   </button>
@@ -501,6 +570,7 @@ const ViewAssignedTasks = () => {
                   placeholder="Enter task title"
                   className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                   required
+                  disabled={loading}
                 />
               </div>
               <div>
@@ -512,6 +582,7 @@ const ViewAssignedTasks = () => {
                   placeholder="Enter task description"
                   className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
                   rows="3"
+                  disabled={loading}
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -523,6 +594,7 @@ const ViewAssignedTasks = () => {
                     value={addForm.start_date}
                     onChange={(e) => handleChange(e, 'add')}
                     className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                    disabled={loading}
                   />
                 </div>
                 <div>
@@ -533,6 +605,7 @@ const ViewAssignedTasks = () => {
                     value={addForm.due_date}
                     onChange={(e) => handleChange(e, 'add')}
                     className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -543,6 +616,7 @@ const ViewAssignedTasks = () => {
                   value={addForm.priority}
                   onChange={(e) => handleChange(e, 'add')}
                   className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                  disabled={loading}
                 >
                   <option value="">Select Priority</option>
                   <option>Low</option>
@@ -557,6 +631,7 @@ const ViewAssignedTasks = () => {
                   value={addForm.status}
                   onChange={(e) => handleChange(e, 'add')}
                   className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
+                  disabled={loading}
                 >
                   <option value="">Select Status</option>
                   <option>Todo</option>
@@ -568,12 +643,14 @@ const ViewAssignedTasks = () => {
                 <button
                   onClick={handleAddTask}
                   className="bg-indigo-500 cursor-pointer hover:bg-indigo-600 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
+                  disabled={loading}
                 >
                   <FaPlus className="text-xs" /> Add Task
                 </button>
                 <button
                   onClick={closeAddModal}
                   className="bg-gray-400 cursor-pointer hover:bg-gray-500 text-white px-4 py-1.5 rounded-md text-sm flex items-center gap-1 transition-all duration-200"
+                  disabled={loading}
                 >
                   <span>❌ Cancel</span>
                 </button>

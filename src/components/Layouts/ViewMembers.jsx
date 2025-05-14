@@ -12,6 +12,7 @@ const ViewMembers = () => {
   const [employeeTasks, setEmployeeTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
+  const [loading, setLoading] = useState(false); // New loading state
 
   const adminId = localStorage.getItem('id');
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -21,15 +22,20 @@ const ViewMembers = () => {
   }, []);
 
   const fetchAllEmployees = async () => {
+    setLoading(true); // Start loading
     try {
       const res = await axios.get(`${BACKEND_URL}/api/employee/${adminId}`);
       setAllEmployees(res.data);
     } catch (error) {
       console.error("Error fetching employees:", error);
+      toast.error("Failed to fetch employees");
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
   const handleEmployeeClick = async (employee) => {
+    setLoading(true); // Start loading
     try {
       const res = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
       const tasks = res.data.filter(t => t.employee_id === employee.id);
@@ -38,6 +44,9 @@ const ViewMembers = () => {
       setShowModal(true);
     } catch (error) {
       console.error("Error fetching tasks:", error);
+      toast.error("Failed to fetch tasks");
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
@@ -57,6 +66,7 @@ const ViewMembers = () => {
       toast.warn(`${employee.first_name} deactivated`);
     }
 
+    setLoading(true); // Start loading
     try {
       await axios.put(`${BACKEND_URL}/api/employee/status/${employee.id}`, { status: newStatus });
     } catch (error) {
@@ -67,6 +77,8 @@ const ViewMembers = () => {
           emp.id === employee.id ? { ...emp, status: employee.status } : emp
         )
       );
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
@@ -82,6 +94,36 @@ const ViewMembers = () => {
   return (
     <div className="w-full h-full px-4 sm:px-6 py-6 overflow-y-auto bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl">
       <ToastContainer position="top-right" autoClose={2000} />
+
+      {/* Loader Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <svg
+              className="animate-spin h-10 w-10 text-indigo-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <p className="mt-2 text-white text-sm font-medium">Loading...</p>
+          </div>
+        </div>
+      )}
+
       <h2 className="text-3xl font-bold text-indigo-900 text-center mb-6">Members Under You</h2>
 
       <div className="flex justify-center gap-4 mb-6 flex-wrap">
@@ -92,6 +134,7 @@ const ViewMembers = () => {
               ? 'bg-indigo-600 text-white shadow-md'
               : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'
           }`}
+          disabled={loading} // Disable during loading
         >
           Active Employees
         </button>
@@ -102,6 +145,7 @@ const ViewMembers = () => {
               ? 'bg-purple-600 text-white shadow-md'
               : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'
           }`}
+          disabled={loading} // Disable during loading
         >
           Deactivated Employees
         </button>
@@ -135,6 +179,7 @@ const ViewMembers = () => {
                   data-tooltip-content={
                     employee.status === 1 ? "Deactivate Employee" : "Activate Employee"
                   }
+                  disabled={loading} // Disable during loading
                 >
                   <FaPowerOff size={14} />
                 </button>
@@ -144,6 +189,7 @@ const ViewMembers = () => {
                   className="text-2xl cursor-pointer text-indigo-600 hover:text-indigo-800 transition-all duration-200"
                   data-tooltip-id="employee-tooltip"
                   data-tooltip-content="View Task Details"
+                  disabled={loading} // Disable during loading
                 >
                   <FaEye />
                 </button>
@@ -205,6 +251,7 @@ const ViewMembers = () => {
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-sm hover:bg-purple-600 transition-all duration-200"
+              disabled={loading} // Disable during loading
             >
               ✕
             </button>
