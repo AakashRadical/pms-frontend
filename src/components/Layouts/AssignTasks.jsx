@@ -143,6 +143,7 @@ const AssignTasks = () => {
             name="title"
             value={form.title}
             onChange={handleChange}
+              onKeyDown={(e) => e.preventDefault()}
             className="w-full px-4 py-2 border border-indigo-200 rounded-lg bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
             required
             disabled={loading}
@@ -157,6 +158,7 @@ const AssignTasks = () => {
             rows="3"
             value={form.description}
             onChange={handleChange}
+              onKeyDown={(e) => e.preventDefault()}
             className="w-full px-4 py-2 border border-indigo-200 rounded-lg bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
             disabled={loading}
           />
