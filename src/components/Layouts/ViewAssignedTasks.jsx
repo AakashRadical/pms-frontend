@@ -207,6 +207,16 @@ const ViewAssignedTasks = () => {
       return;
     }
 
+    // Validate start_date and due_date
+    if (addForm.start_date && addForm.due_date) {
+      const startDate = new Date(addForm.start_date);
+      const dueDate = new Date(addForm.due_date);
+      if (startDate > dueDate) {
+        toast.error('Start date cannot be after due date.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       await axios.post(`${BACKEND_URL}/api/tasks/create-task`, {
@@ -593,6 +603,7 @@ const ViewAssignedTasks = () => {
                     name="start_date"
                     value={addForm.start_date}
                     onChange={(e) => handleChange(e, 'add')}
+                    max={addForm.due_date || undefined} // Prevent selecting start date after due date
                     className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                     disabled={loading}
                   />
@@ -604,6 +615,7 @@ const ViewAssignedTasks = () => {
                     name="due_date"
                     value={addForm.due_date}
                     onChange={(e) => handleChange(e, 'add')}
+                    min={addForm.start_date || undefined} // Prevent selecting due date before start date
                     className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                     disabled={loading}
                   />
