@@ -12,7 +12,7 @@ const ViewMembers = () => {
   const [employeeTasks, setEmployeeTasks] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
-  const [loading, setLoading] = useState(false); // New loading state
+  const [loading, setLoading] = useState(false);
 
   const adminId = localStorage.getItem('id');
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -22,7 +22,7 @@ const ViewMembers = () => {
   }, []);
 
   const fetchAllEmployees = async () => {
-    setLoading(true); // Start loading
+    setLoading(true);
     try {
       const res = await axios.get(`${BACKEND_URL}/api/employee/${adminId}`);
       setAllEmployees(res.data);
@@ -30,12 +30,12 @@ const ViewMembers = () => {
       console.error("Error fetching employees:", error);
       toast.error("Failed to fetch employees");
     } finally {
-      setLoading(false); // Stop loading
+      setLoading(false);
     }
   };
 
   const handleEmployeeClick = async (employee) => {
-    setLoading(true); // Start loading
+    setLoading(true);
     try {
       const res = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
       const tasks = res.data.filter(t => t.employee_id === employee.id);
@@ -46,7 +46,7 @@ const ViewMembers = () => {
       console.error("Error fetching tasks:", error);
       toast.error("Failed to fetch tasks");
     } finally {
-      setLoading(false); // Stop loading
+      setLoading(false);
     }
   };
 
@@ -54,6 +54,7 @@ const ViewMembers = () => {
     e.stopPropagation();
     const newStatus = employee.status === 1 ? 0 : 1;
 
+    // Optimistic UI update
     setAllEmployees(prev =>
       prev.map(emp =>
         emp.id === employee.id ? { ...emp, status: newStatus } : emp
@@ -66,19 +67,25 @@ const ViewMembers = () => {
       toast.warn(`${employee.first_name} deactivated`);
     }
 
-    setLoading(true); // Start loading
     try {
-      await axios.put(`${BACKEND_URL}/api/employee/status/${employee.id}`, { status: newStatus });
+      // Add timeout to prevent infinite requests
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out')), 10000) // 10 seconds timeout
+      );
+
+      await Promise.race([
+        axios.put(`${BACKEND_URL}/api/employee/status/${employee.id}`, { status: newStatus }),
+        timeoutPromise
+      ]);
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Status update failed. Please try again.");
+      // Revert optimistic update on failure
       setAllEmployees(prev =>
         prev.map(emp =>
           emp.id === employee.id ? { ...emp, status: employee.status } : emp
         )
       );
-    } finally {
-      setLoading(false); // Stop loading
     }
   };
 
@@ -134,7 +141,7 @@ const ViewMembers = () => {
               ? 'bg-indigo-600 text-white shadow-md'
               : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'
           }`}
-          disabled={loading} // Disable during loading
+          disabled={loading}
         >
           Active Employees
         </button>
@@ -145,7 +152,7 @@ const ViewMembers = () => {
               ? 'bg-purple-600 text-white shadow-md'
               : 'bg-white text-purple-600 border border-purple-200 hover:bg-purple-50'
           }`}
-          disabled={loading} // Disable during loading
+          disabled={loading}
         >
           Deactivated Employees
         </button>
@@ -179,7 +186,7 @@ const ViewMembers = () => {
                   data-tooltip-content={
                     employee.status === 1 ? "Deactivate Employee" : "Activate Employee"
                   }
-                  disabled={loading} // Disable during loading
+                  disabled={loading}
                 >
                   <FaPowerOff size={14} />
                 </button>
@@ -189,7 +196,7 @@ const ViewMembers = () => {
                   className="text-2xl cursor-pointer text-indigo-600 hover:text-indigo-800 transition-all duration-200"
                   data-tooltip-id="employee-tooltip"
                   data-tooltip-content="View Task Details"
-                  disabled={loading} // Disable during loading
+                  disabled={loading}
                 >
                   <FaEye />
                 </button>
@@ -232,7 +239,7 @@ const ViewMembers = () => {
               <h3 className="text-xl font-bold text-indigo-900 mb-4">📝 Assigned Tasks</h3>
               {assignedTasks.length ? (
                 <ul className="space-y-3 text-sm text-indigo-700">
-                  {assignedTasks.map(task => (
+                  {completedTasks.map(task => (
                     <li key={task.task_id} className="border border-indigo-100 p-3 rounded-lg bg-purple-50/50">
                       <div className="font-semibold">{task.title}</div>
                       <div className="text-xs text-indigo-500">
@@ -251,7 +258,7 @@ const ViewMembers = () => {
             <button
               onClick={() => setShowModal(false)}
               className="absolute top-2 right-2 bg-purple-500 text-white px-2 py-1 rounded-full text-sm hover:bg-purple-600 transition-all duration-200"
-              disabled={loading} // Disable during loading
+              disabled={loading}
             >
               ✕
             </button>
