@@ -4,6 +4,11 @@ import { FaMale, FaFemale, FaEdit, FaPlus, FaTrash, FaSearch } from 'react-icons
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import io from 'socket.io-client';
+
+const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000', {
+  auth: { token: localStorage.getItem('token') },
+});
 
 const ViewAssignedTasks = () => {
   const [groupedTasks, setGroupedTasks] = useState({});
@@ -23,23 +28,49 @@ const ViewAssignedTasks = () => {
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [eventQueue, setEventQueue] = useState([]);
   const adminId = localStorage.getItem('id');
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
   useEffect(() => {
     if (adminId) {
+      socket.emit('join', adminId);
+
+      socket.on('connect', () => {
+        console.log('Socket.IO connected');
+        fetchTasks(); // Sync state on connect
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error);
+        toast.error('Failed to connect to real-time updates');
+      });
+
       fetchTasks();
+
+      return () => {
+        socket.off('connect');
+        socket.off('connect_error');
+        socket.off('newTask');
+        socket.off('updateTask');
+        socket.off('deleteTask');
+      };
     }
   }, [adminId]);
 
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      const employeeRes = await axios.get(`${BACKEND_URL}/api/employee/${adminId}`);
+      const employeeRes = await axios.get(`${BACKEND_URL}/api/employee/${adminId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+      });
       const employees = employeeRes.data;
 
-      const taskRes = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`);
+      const taskRes = await axios.get(`${BACKEND_URL}/api/tasks/assigned/${adminId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+      });
       const activeTasks = taskRes.data.filter((task) => task.status !== 'Completed');
 
       const grouped = employees.reduce((acc, emp) => {
@@ -64,6 +95,7 @@ const ViewAssignedTasks = () => {
 
       setGroupedTasks(grouped);
       setFilteredTasks(grouped);
+      setIsInitialized(true);
     } catch (error) {
       console.error('Error fetching data:', error.response?.data || error.message);
       toast.error('Failed to fetch tasks');
@@ -73,16 +105,112 @@ const ViewAssignedTasks = () => {
   };
 
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredTasks(groupedTasks);
+    if (!isInitialized) {
+      // Queue events until initialized
+      socket.on('newTask', (newTask) => {
+        setEventQueue((prev) => [...prev, { type: 'newTask', data: newTask }]);
+      });
+      socket.on('updateTask', (updatedTask) => {
+        setEventQueue((prev) => [...prev, { type: 'updateTask', data: updatedTask }]);
+      });
+      socket.on('deleteTask', (data) => {
+        setEventQueue((prev) => [...prev, { type: 'deleteTask', data }]);
+      });
       return;
     }
 
-    const query = searchQuery.toLowerCase();
-    const filtered = Object.entries(groupedTasks).reduce((acc, [employeeId, employee]) => {
-      const matchesEmployee = employee.employeeName.toLowerCase().includes(query);
+    // Process queued events
+    eventQueue.forEach(({ type, data }) => {
+      if (type === 'newTask') handleNewTask(data);
+      else if (type === 'updateTask') handleUpdateTask(data);
+      else if (type === 'deleteTask') handleDeleteTask(data);
+    });
+    setEventQueue([]);
+
+    // Set up real-time listeners
+    socket.on('newTask', handleNewTask);
+    socket.on('updateTask', handleUpdateTask);
+    socket.on('deleteTask', handleDeleteTask);
+
+    return () => {
+      socket.off('newTask');
+      socket.off('updateTask');
+      socket.off('deleteTask');
+    };
+  }, [isInitialized, searchQuery]);
+
+  const handleNewTask = (newTask) => {
+    console.log('New task received:', newTask);
+    setGroupedTasks((prev) => {
+      const newGrouped = { ...prev };
+      newTask.employee_ids?.forEach((empId) => {
+        const employeeId = empId.toString();
+        if (!newGrouped[employeeId]) {
+          const employee = newTask.employees.find((e) => e.id === empId);
+          if (employee) {
+            newGrouped[employeeId] = {
+              employeeName: `${employee.first_name} ${employee.last_name}`,
+              gender: employee.gender,
+              tasks: [],
+            };
+          } else {
+            console.warn(`Employee ${employeeId} not found in newTask.employees`);
+            return;
+          }
+        }
+        newGrouped[employeeId].tasks = [
+          ...newGrouped[employeeId].tasks.filter((t) => t.task_id !== newTask.task_id),
+          { ...newTask, task_id: newTask.task_id },
+        ].sort((a, b) => (a.position || 0) - (b.position || 0));
+      });
+      setFilteredTasks(applySearchFilter(newGrouped, searchQuery));
+      return newGrouped;
+    });
+  };
+
+  const handleUpdateTask = (updatedTask) => {
+    console.log('Task updated:', updatedTask);
+    setGroupedTasks((prev) => {
+      const newGrouped = { ...prev };
+      updatedTask.employee_ids?.forEach((empId) => {
+        const employeeId = empId.toString();
+        if (!newGrouped[employeeId]) {
+          console.warn(`Employee ${employeeId} not found for updated task`);
+          return;
+        }
+        newGrouped[employeeId].tasks = newGrouped[employeeId].tasks
+          .map((task) =>
+            task.task_id === updatedTask.task_id ? { ...task, ...updatedTask } : task
+          )
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
+      });
+      setFilteredTasks(applySearchFilter(newGrouped, searchQuery));
+      return newGrouped;
+    });
+  };
+
+  const handleDeleteTask = ({ task_id }) => {
+    console.log('Task deleted:', task_id);
+    setGroupedTasks((prev) => {
+      const newGrouped = { ...prev };
+      Object.keys(newGrouped).forEach((employeeId) => {
+        newGrouped[employeeId].tasks = newGrouped[employeeId].tasks.filter(
+          (task) => task.task_id !== task_id
+        );
+      });
+      setFilteredTasks(applySearchFilter(newGrouped, searchQuery));
+      return newGrouped;
+    });
+  };
+
+  const applySearchFilter = (tasks, query) => {
+    if (!query.trim()) return tasks;
+
+    const lowerQuery = query.toLowerCase();
+    return Object.entries(tasks).reduce((acc, [employeeId, employee]) => {
+      const matchesEmployee = employee.employeeName.toLowerCase().includes(lowerQuery);
       const matchingTasks = employee.tasks.filter((task) =>
-        task.title.toLowerCase().includes(query)
+        task.title.toLowerCase().includes(lowerQuery)
       );
 
       if (matchesEmployee || matchingTasks.length > 0) {
@@ -93,8 +221,10 @@ const ViewAssignedTasks = () => {
       }
       return acc;
     }, {});
+  };
 
-    setFilteredTasks(filtered);
+  useEffect(() => {
+    setFilteredTasks(applySearchFilter(groupedTasks, searchQuery));
   }, [searchQuery, groupedTasks]);
 
   const handleEditClick = (task) => {
@@ -117,11 +247,10 @@ const ViewAssignedTasks = () => {
   const formatDate = (dateStr) =>
     dateStr ? new Date(dateStr).toISOString().split('T')[0] : '';
 
-  // Calculate min completion date based on start date
   const getMinCompletionDate = () => {
     if (!editForm.start_date) return null;
     const startDate = new Date(editForm.start_date);
-    startDate.setDate(startDate.getDate()); // Completion date can be same as start date
+    startDate.setDate(startDate.getDate());
     return startDate.toISOString().split('T')[0];
   };
 
@@ -136,13 +265,15 @@ const ViewAssignedTasks = () => {
     };
 
     try {
-      await axios.put(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, updatedForm);
+      await axios.put(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, updatedForm, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+      });
       toast.success(`Task updated successfully`);
       setEditTask(null);
-      await fetchTasks();
     } catch (error) {
       console.error('Error updating task:', error.response?.data || error.message);
       toast.error('Failed to update task');
+      await fetchTasks(); // Sync state on error
     } finally {
       setLoading(false);
     }
@@ -151,11 +282,12 @@ const ViewAssignedTasks = () => {
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await axios.delete(`${BACKEND_URL}/api/tasks/${editTask.task_id}`);
+      await axios.delete(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+      });
       toast.success(`Task deleted successfully`);
       setEditTask(null);
       setShowDeleteConfirm(false);
-      await fetchTasks();
     } catch (error) {
       console.error('Error deleting task:', error.response?.data || error.message);
       if (error.response?.status === 404) {
@@ -184,7 +316,7 @@ const ViewAssignedTasks = () => {
       due_date: '',
       priority: '',
       status: '',
-      position: groupedTasks[employeeId].tasks.length,
+      position: groupedTasks[employeeId]?.tasks.length || 0,
     });
   };
 
@@ -207,7 +339,6 @@ const ViewAssignedTasks = () => {
       return;
     }
 
-    // Validate start_date and due_date
     if (addForm.start_date && addForm.due_date) {
       const startDate = new Date(addForm.start_date);
       const dueDate = new Date(addForm.due_date);
@@ -219,17 +350,23 @@ const ViewAssignedTasks = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${BACKEND_URL}/api/tasks/create-task`, {
-        ...addForm,
-        admin_id: adminId,
-        assignedEmployees: [addTask.employeeId],
-      });
+      await axios.post(
+        `${BACKEND_URL}/api/tasks/create-task`,
+        {
+          ...addForm,
+          admin_id: adminId,
+          assignedEmployees: [addTask.employeeId],
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+        }
+      );
       toast.success('✅ Task assigned successfully');
       closeAddModal();
-      await fetchTasks();
     } catch (error) {
       console.error('Error creating task:', error.response?.data || error.message);
       toast.error('❌ Failed to assign task');
+      await fetchTasks(); // Sync state on error
     } finally {
       setLoading(false);
     }
@@ -257,12 +394,15 @@ const ViewAssignedTasks = () => {
 
     newGroupedTasks[employeeId].tasks = updatedTasks;
     setGroupedTasks(newGroupedTasks);
+    setFilteredTasks(applySearchFilter(newGroupedTasks, searchQuery));
 
     try {
       const updatePromises = updatedTasks.map((task) =>
-        axios.put(`${BACKEND_URL}/api/tasks/${task.task_id}`, {
-          position: task.position,
-        })
+        axios.put(
+          `${BACKEND_URL}/api/tasks/${task.task_id}`,
+          { position: task.position },
+          { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }
+        )
       );
       await Promise.all(updatePromises);
     } catch (error) {
@@ -276,7 +416,6 @@ const ViewAssignedTasks = () => {
 
   return (
     <div className="w-full px-4 sm:px-6 py-6 bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl">
-      {/* Loader Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center">
           <div className="flex flex-col items-center">
@@ -503,7 +642,7 @@ const ViewAssignedTasks = () => {
                         name="completion_date"
                         value={editForm.completion_date}
                         onChange={(e) => handleChange(e, 'edit')}
-                        min={getMinCompletionDate()} // Restrict completion date to start date or later
+                        min={getMinCompletionDate()}
                         className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                         disabled={loading}
                       />
@@ -603,7 +742,7 @@ const ViewAssignedTasks = () => {
                     name="start_date"
                     value={addForm.start_date}
                     onChange={(e) => handleChange(e, 'add')}
-                    max={addForm.due_date || undefined} // Prevent selecting start date after due date
+                    max={addForm.due_date || undefined}
                     className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                     disabled={loading}
                   />
@@ -615,7 +754,7 @@ const ViewAssignedTasks = () => {
                     name="due_date"
                     value={addForm.due_date}
                     onChange={(e) => handleChange(e, 'add')}
-                    min={addForm.start_date || undefined} // Prevent selecting due date before start date
+                    min={addForm.start_date || undefined}
                     className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
                     disabled={loading}
                   />

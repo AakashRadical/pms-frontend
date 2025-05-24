@@ -3,8 +3,13 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { FaSignOutAlt, FaUserAlt, FaUserTie, FaUser, FaBars } from 'react-icons/fa';
+import io from 'socket.io-client';
 import UserCompletedTasks from '../Layouts/UserCompletedTasks';
 import ActiveTasks from '../Layouts/ActiveTasks';
+
+const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000', {
+  auth: { token: localStorage.getItem('employeeToken') },
+});
 
 const UserDashboard = () => {
   const [tasks, setTasks] = useState([]);
@@ -12,7 +17,7 @@ const UserDashboard = () => {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [loading, setLoading] = useState(true); // 🔹 Loader state
+  const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
   const employeeId = localStorage.getItem('employeeId');
@@ -25,8 +30,29 @@ const UserDashboard = () => {
       return;
     }
 
+    socket.emit('join', employeeId);
+
+    socket.on('newTask', (newTask) => {
+      console.log('New task received:', newTask);
+      setTasks((prevTasks) => [...prevTasks, newTask]);
+    });
+
+    socket.on('updateTask', (updatedTask) => {
+      console.log('Task updated:', updatedTask);
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.task_id === updatedTask.task_id ? { ...task, ...updatedTask } : task
+        )
+      );
+    });
+
+    socket.on('deleteTask', ({ task_id }) => {
+      console.log('Task deleted:', task_id);
+      setTasks((prevTasks) => prevTasks.filter((task) => task.task_id !== task_id));
+    });
+
     const fetchTasks = async () => {
-      setLoading(true); // 🔹 Start loading
+      setLoading(true);
       try {
         const response = await axios.get(`${BACKEND_URL}/api/tasks/employee/${employeeId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` },
@@ -38,11 +64,17 @@ const UserDashboard = () => {
         console.error('Error fetching tasks:', error);
         toast.error('Failed to fetch tasks');
       } finally {
-        setLoading(false); // 🔹 Stop loading
+        setLoading(false);
       }
     };
 
     fetchTasks();
+
+    return () => {
+      socket.off('newTask');
+      socket.off('updateTask');
+      socket.off('deleteTask');
+    };
   }, [employeeId, navigate]);
 
   const activeTasks = tasks.filter(task => task.status?.toLowerCase() !== 'completed');
@@ -68,7 +100,6 @@ const UserDashboard = () => {
 
   return (
     <div className="w-full min-h-screen flex bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      {/* Sidebar Navigation */}
       <div className={`w-64 bg-gray-900 text-white p-6 shadow-lg transition-all duration-300 ${isSidebarOpen ? 'block' : 'hidden'} sm:block`}>
         <h3 className="text-xl font-bold mb-6 tracking-tight">Project Management</h3>
         <nav className="space-y-4">
@@ -87,7 +118,6 @@ const UserDashboard = () => {
         </nav>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
           <div className="text-center sm:text-left">
@@ -134,7 +164,6 @@ const UserDashboard = () => {
         </div>
       </div>
 
-      {/* Logout Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-lg w-11/12 max-w-sm p-6">

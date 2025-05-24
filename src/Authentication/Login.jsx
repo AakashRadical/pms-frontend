@@ -8,7 +8,7 @@ import { FaEye, FaEyeSlash, FaEnvelope } from 'react-icons/fa';
 const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false); // New loading state
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
@@ -23,22 +23,27 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true); // Start loading
+    setLoading(true);
     try {
+      // Clear localStorage to prevent stale data
+      localStorage.removeItem('token');
+      localStorage.removeItem('id');
+
       const res = await axios.post(`${BACKEND_URL}/api/login`, form);
-      const token = res.data.token;
-      if (token) {
+      const { token, user } = res.data;
+      if (token && user.id) {
         localStorage.setItem('token', token);
-        localStorage.setItem('id', res.data.user.id);
+        localStorage.setItem('id', user.id);
         toast.success('Login successful');
         setTimeout(() => navigate('/home'), 1000);
       } else {
-        toast.error('Failed to log in, no token received.');
+        toast.error('Failed to log in, invalid response.');
       }
     } catch (err) {
-      toast.error('Login failed');
+      console.error('Login error:', err.response?.data || err.message);
+      toast.error(err.response?.data?.message || 'Login failed');
     } finally {
-      setLoading(false); // Stop loading
+      setLoading(false);
     }
   };
 
@@ -71,7 +76,7 @@ const Login = () => {
                 className="w-full border border-indigo-200 pl-10 pr-4 py-3 rounded-xl bg-indigo-50/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 focus:border-purple-500 text-sm transition-all duration-300"
                 required
                 aria-describedby="email-error"
-                disabled={loading} // Disable input during loading
+                disabled={loading}
               />
               <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 text-indigo-400 h-4 w-4" />
             </div>
@@ -91,14 +96,14 @@ const Login = () => {
                 className="w-full border border-indigo-200 pl-4 pr-10 py-3 rounded-xl bg-indigo-50/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 focus:border-purple-500 text-sm transition-all duration-300"
                 required
                 aria-describedby="password-error"
-                disabled={loading} // Disable input during loading
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
                 className="absolute right-3 cursor-pointer top-1/2 transform -translate-y-1/2 text-indigo-500 hover:text-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 rounded-md p-1"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                disabled={loading} // Disable button during loading
+                disabled={loading}
               >
                 {showPassword ? <FaEyeSlash className="h-4 w-4" /> : <FaEye className="h-4 w-4" />}
               </button>
@@ -107,7 +112,7 @@ const Login = () => {
           <button
             type="submit"
             className="w-full cursor-pointer bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-3 rounded-xl text-sm transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 flex items-center justify-center"
-            disabled={loading} // Disable button during loading
+            disabled={loading}
           >
             {loading ? (
               <div className="flex items-center">

@@ -25,7 +25,9 @@ const AssignTasks = () => {
     if (adminId) {
       setLoading(true);
       axios
-        .get(`${BACKEND_URL}/api/employee/${adminId}`)
+        .get(`${BACKEND_URL}/api/employee/${adminId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+        })
         .then((res) => {
           const formatted = res.data.map((emp) => ({
             value: emp.id,
@@ -60,11 +62,17 @@ const AssignTasks = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${BACKEND_URL}/api/tasks/create-task`, {
-        ...form,
-        admin_id: adminId,
-        assignedEmployees,
-      });
+      await axios.post(
+        `${BACKEND_URL}/api/tasks/create-task`,
+        {
+          ...form,
+          admin_id: adminId,
+          assignedEmployees,
+        },
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
+        }
+      );
       toast.success('✅ Task assigned successfully');
       setForm({
         title: '',
@@ -84,25 +92,22 @@ const AssignTasks = () => {
     }
   };
 
-  // Calculate min due date based on start date
   const getMinDueDate = () => {
     if (!form.start_date) return null;
     const startDate = new Date(form.start_date);
-    startDate.setDate(startDate.getDate()); // Due date can be same as start date
+    startDate.setDate(startDate.getDate());
     return startDate.toISOString().split('T')[0];
   };
 
-  // Calculate max start date based on due date
   const getMaxStartDate = () => {
     if (!form.due_date) return null;
     const dueDate = new Date(form.due_date);
-    dueDate.setDate(dueDate.getDate()); // Start date can be same as due date
+    dueDate.setDate(dueDate.getDate());
     return dueDate.toISOString().split('T')[0];
   };
 
   return (
     <div className="max-w-2xl mx-auto mt-10 p-6 sm:p-8 bg-white rounded-xl shadow-lg bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
-      {/* Loader Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center">
           <div className="flex flex-col items-center">
@@ -133,7 +138,6 @@ const AssignTasks = () => {
 
       <h2 className="text-2xl sm:text-3xl font-bold text-center text-indigo-900 mb-6">Assign New Task</h2>
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Title - Required */}
         <div>
           <label className="block text-indigo-800 font-medium text-sm mb-1">
             Title<span className="text-purple-500">*</span>
@@ -143,14 +147,12 @@ const AssignTasks = () => {
             name="title"
             value={form.title}
             onChange={handleChange}
-              onKeyDown={(e) => e.preventDefault()}
             className="w-full px-4 py-2 border border-indigo-200 rounded-lg bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
             required
             disabled={loading}
           />
         </div>
 
-        {/* Description - Optional */}
         <div>
           <label className="block text-indigo-800 font-medium text-sm mb-1">Description</label>
           <textarea
@@ -158,13 +160,11 @@ const AssignTasks = () => {
             rows="3"
             value={form.description}
             onChange={handleChange}
-              onKeyDown={(e) => e.preventDefault()}
             className="w-full px-4 py-2 border border-indigo-200 rounded-lg bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
             disabled={loading}
           />
         </div>
 
-        {/* Dates - Optional */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
           <div className="w-full sm:w-1/2">
             <label className="block text-indigo-800 font-medium text-sm mb-1">Start Date</label>
@@ -173,7 +173,7 @@ const AssignTasks = () => {
               name="start_date"
               value={form.start_date}
               onChange={handleChange}
-              max={getMaxStartDate()} // Restrict start date to due date or earlier
+              max={getMaxStartDate()}
               className="w-full px-3 py-2 border border-indigo-200 rounded-lg bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
               disabled={loading}
             />
@@ -185,14 +185,13 @@ const AssignTasks = () => {
               name="due_date"
               value={form.due_date}
               onChange={handleChange}
-              min={getMinDueDate()} // Restrict due date to start date or later
+              min={getMinDueDate()}
               className="w-full px-3 py-2 border border-indigo-200 rounded-lg bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200"
               disabled={loading}
             />
           </div>
         </div>
 
-        {/* Priority and Status - Optional */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
           <div className="w-full sm:w-1/2">
             <label className="block text-indigo-800 font-medium text-sm mb-1">Priority</label>
@@ -226,7 +225,6 @@ const AssignTasks = () => {
           </div>
         </div>
 
-        {/* Employee Selection - Required */}
         <div>
           <label className="block text-indigo-800 font-medium text-sm mb-1">
             Assign to Employees<span className="text-purple-500">*</span>
@@ -246,7 +244,7 @@ const AssignTasks = () => {
 
         <button
           type="submit"
-          className="w-full cursor-pointer bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-3 rounded-lg text-sm transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium py-3 rounded-lg text-sm transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500"
           disabled={loading}
         >
           ✅ Assign Task

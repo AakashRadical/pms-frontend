@@ -3,13 +3,12 @@ import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 
 const ActiveTasks = ({ tasks }) => {
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-  const [loading, setLoading] = useState(true); // New loading state
+  const [loading, setLoading] = useState(true);
 
-  // Simulate loading delay (replace with actual data fetching logic if needed)
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 1000); // 1-second delay for demo purposes
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -22,13 +21,10 @@ const ActiveTasks = ({ tasks }) => {
 
   return (
     <div className="relative flex flex-col gap-4 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Loader Overlay */}
       {loading && (
         <div className="absolute inset-0 bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center z-10">
           <div className="relative">
-            {/* Dual-ring spinner with gradient */}
             <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-t-4 border-indigo-600 border-r-purple-500 border-b-indigo-600 border-l-purple-500 animate-spin"></div>
-            {/* Inner pulse ring */}
             <div className="absolute inset-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 animate-pulse opacity-30"></div>
           </div>
           <p className="mt-3 text-sm sm:text-base font-medium text-indigo-800 animate-pulse">
@@ -61,7 +57,6 @@ const ActiveTasks = ({ tasks }) => {
             )}
           </div>
 
-          {/* Details section with controlled height and fade transition */}
           <div
             className={`overflow-hidden transition-all duration-300 ${
               expandedTaskId === task.task_id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
