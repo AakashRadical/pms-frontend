@@ -153,9 +153,10 @@ const App = () => {
             <PrivateRoute role="user">
               <UserDashboard />
             </PrivateRoute>
-          }
+          }                   
         />
       </Routes>
+   
     </>
   );
 };

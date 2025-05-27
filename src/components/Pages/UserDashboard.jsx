@@ -4,12 +4,8 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import { FaSignOutAlt, FaUserAlt, FaUserTie, FaUser, FaBars } from 'react-icons/fa';
 import io from 'socket.io-client';
-import UserCompletedTasks from '../Layouts/UserCompletedTasks';
 import ActiveTasks from '../Layouts/ActiveTasks';
-
-const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000', {
-  auth: { token: localStorage.getItem('employeeToken') },
-});
+import UserCompletedTasks from '../Layouts/UserCompletedTasks';
 
 const UserDashboard = () => {
   const [tasks, setTasks] = useState([]);
@@ -18,51 +14,105 @@ const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState('active');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState('');
 
   const navigate = useNavigate();
   const employeeId = localStorage.getItem('employeeId');
-  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
   useEffect(() => {
-    if (!employeeId || !localStorage.getItem('employeeToken')) {
-      toast.error('Please log in to view tasks');
-      navigate('/user-login');
+    const token = localStorage.getItem('employeeToken');
+    console.log('Socket.IO auth token:', token); // Debug
+    if (!employeeId || !token) {
+      localStorage.clear();
+      navigate('/user-login', { replace: true });
       return;
     }
 
-    socket.emit('join', employeeId);
+    const socket = io(BACKEND_URL, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket.IO connected:', socket.id);
+      socket.emit('join', employeeId);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error.message);
+      if (error.message.includes('Authentication error')) {
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        navigate('/user-login', { replace: true });
+      }
+    });
 
     socket.on('newTask', (newTask) => {
       console.log('New task received:', newTask);
-      setTasks((prevTasks) => [...prevTasks, newTask]);
+      console.log('Employee ID:', employeeId, 'Task employee_ids:', newTask.employee_ids);
+      const employeeIds = newTask.employee_ids.map(Number);
+      if (employeeIds.includes(Number(employeeId))) {
+        setTasks((prev) => {
+          const updatedTasks = [...prev, { ...newTask, status: newTask.status || 'Todo' }].sort(
+            (a, b) => (a.position || 0) - (b.position || 0)
+          );
+          console.log('Updated tasks:', updatedTasks); // Debug
+          return updatedTasks;
+        });
+        toast.success(`New task assigned: ${newTask.title}`);
+      } else {
+        console.log('Task not assigned to this employee');
+      }
     });
 
     socket.on('updateTask', (updatedTask) => {
       console.log('Task updated:', updatedTask);
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.task_id === updatedTask.task_id ? { ...task, ...updatedTask } : task
-        )
-      );
+      const employeeIds = updatedTask.employee_ids.map(Number);
+      if (employeeIds.includes(Number(employeeId))) {
+        setTasks((prev) => {
+          const updatedTasks = prev
+            .map((task) =>
+              task.task_id === updatedTask.task_id ? { ...task, ...updatedTask } : task
+            )
+            .sort((a, b) => (a.position || 0) - (b.position || 0));
+          console.log('Updated tasks after update:', updatedTasks); // Debug
+          return updatedTasks;
+        });
+        toast.info(`Task updated: ${updatedTask.title}`);
+      }
     });
 
     socket.on('deleteTask', ({ task_id }) => {
       console.log('Task deleted:', task_id);
-      setTasks((prevTasks) => prevTasks.filter((task) => task.task_id !== task_id));
+      setTasks((prev) => {
+        const updatedTasks = prev.filter((task) => task.task_id !== task_id);
+        console.log('Updated tasks after delete:', updatedTasks); // Debug
+        return updatedTasks;
+      });
+      toast.warn('Task deleted');
     });
 
     const fetchTasks = async () => {
       setLoading(true);
       try {
         const response = await axios.get(`${BACKEND_URL}/api/tasks/employee/${employeeId}`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('employeeToken')}` },
+          headers: { Authorization: `Bearer ${token}` },
         });
-
         setTasks(response.data.tasks || []);
         setEmployee(response.data.employee || {});
+        console.log('Fetched tasks:', response.data.tasks); // Debug
       } catch (error) {
         console.error('Error fetching tasks:', error);
-        toast.error('Failed to fetch tasks');
+        if (error.response?.status === 401) {
+          localStorage.clear();
+          navigate('/user-login', { replace: true });
+        } else {
+          toast.error('Failed to fetch tasks');
+        }
       } finally {
         setLoading(false);
       }
@@ -71,20 +121,34 @@ const UserDashboard = () => {
     fetchTasks();
 
     return () => {
+      socket.off('connect');
+      socket.off('connect_error');
       socket.off('newTask');
       socket.off('updateTask');
       socket.off('deleteTask');
+      socket.disconnect();
     };
   }, [employeeId, navigate]);
 
-  const activeTasks = tasks.filter(task => task.status?.toLowerCase() !== 'completed');
-  const completedTasks = tasks.filter(task => task.status?.toLowerCase() === 'completed');
+  useEffect(() => {
+    console.log('Current tasks state:', tasks); // Debug
+  }, [tasks]);
+
+  const activeTasks = tasks.filter(
+    (task) => !task.status || task.status.toLowerCase() !== 'completed'
+  );
+  console.log('Active tasks:', activeTasks); // Debug
+
+  const completedTasks = tasks.filter((task) => task.status?.toLowerCase() === 'completed');
 
   const handleLogoutConfirm = () => {
-    localStorage.removeItem('employeeToken');
-    localStorage.removeItem('employeeId');
+    localStorage.clear();
+    const socket = io.connect(BACKEND_URL, {
+      auth: { token: localStorage.getItem('employeeToken') },
+    });
+    socket.disconnect();
     toast.success('Logged out successfully');
-    navigate('/user-login');
+    navigate('/user-login', { replace: true });
   };
 
   const getGenderIcon = (gender) => {
@@ -98,20 +162,37 @@ const UserDashboard = () => {
     }
   };
 
+  const toLocalYYYYMMDD = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   return (
     <div className="w-full min-h-screen flex bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      <div className={`w-64 bg-gray-900 text-white p-6 shadow-lg transition-all duration-300 ${isSidebarOpen ? 'block' : 'hidden'} sm:block`}>
+      <div
+        className={`w-64 bg-gray-900 text-white p-6 shadow-lg transition-all duration-300 ${
+          isSidebarOpen ? 'block' : 'hidden'
+        } sm:block`}
+      >
         <h3 className="text-xl font-bold mb-6 tracking-tight">Project Management</h3>
         <nav className="space-y-4">
           <button
             onClick={() => setActiveTab('active')}
-            className={`flex cursor-pointer items-center gap-3 text-base py-2 px-4 rounded-md w-full hover:bg-indigo-700 transition duration-200 ${activeTab === 'active' ? 'bg-indigo-700' : ''}`}
+            className={`flex cursor-pointer items-center gap-3 text-base py-2 px-4 rounded-md w-full hover:bg-indigo-700 transition duration-200 ${
+              activeTab === 'active' ? 'bg-indigo-700' : ''
+            }`}
           >
             <FaSignOutAlt /> Active Tasks
           </button>
           <button
             onClick={() => setActiveTab('completed')}
-            className={`flex cursor-pointer items-center gap-3 text-base py-2 px-4 rounded-md w-full hover:bg-indigo-700 transition duration-200 ${activeTab === 'completed' ? 'bg-indigo-700' : ''}`}
+            className={`flex cursor-pointer items-center gap-3 text-base py-2 px-4 rounded-md w-full hover:bg-indigo-700 transition duration-200 ${
+              activeTab === 'completed' ? 'bg-indigo-700' : ''
+            }`}
           >
             <FaUserAlt /> Completed Tasks
           </button>
@@ -125,7 +206,9 @@ const UserDashboard = () => {
               📋 {getGenderIcon(employee.gender)}
               {employee.first_name} {employee.last_name}'s Tasks
             </h2>
-            <p className="text-sm text-indigo-600 mt-1">{employee.designation || 'No designation'} | {employee.gender || 'No gender specified'}</p>
+            <p className="text-sm text-indigo-600 mt-1">
+              {employee.designation || 'No designation'} | {employee.gender || 'No gender specified'}
+            </p>
           </div>
           <div className="flex items-center gap-3 mt-3 sm:mt-0">
             <button
@@ -158,7 +241,7 @@ const UserDashboard = () => {
             completedTasks.length === 0 ? (
               <p className="text-center text-indigo-600 text-sm font-medium">No completed tasks.</p>
             ) : (
-              <UserCompletedTasks tasks={completedTasks} />
+              <UserCompletedTasks tasks={completedTasks} setSelectedDate={setSelectedDate} />
             )
           )}
         </div>

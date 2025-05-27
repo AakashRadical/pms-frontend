@@ -2,12 +2,19 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaMale, FaFemale, FaEdit, FaPlus, FaTrash, FaSearch } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import io from 'socket.io-client';
 
+const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+console.log('Socket.IO auth token:', token);
+
 const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000', {
-  auth: { token: localStorage.getItem('token') },
+  auth: { token },
+  transports: ['websocket', 'polling'], // Allow fallback to polling
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
 });
 
 const ViewAssignedTasks = () => {
@@ -39,13 +46,17 @@ const ViewAssignedTasks = () => {
       socket.emit('join', adminId);
 
       socket.on('connect', () => {
-        console.log('Socket.IO connected');
-        fetchTasks(); // Sync state on connect
+        console.log('Socket.IO connected:', socket.id);
+        fetchTasks();
       });
 
       socket.on('connect_error', (error) => {
-        console.error('Socket.IO connection error:', error);
+        console.error('Socket.IO connection error:', error.message);
         toast.error('Failed to connect to real-time updates');
+      });
+
+      socket.on('error', (error) => {
+        console.error('Socket.IO error:', error);
       });
 
       fetchTasks();
@@ -53,6 +64,7 @@ const ViewAssignedTasks = () => {
       return () => {
         socket.off('connect');
         socket.off('connect_error');
+        socket.off('error');
         socket.off('newTask');
         socket.off('updateTask');
         socket.off('deleteTask');
@@ -285,6 +297,17 @@ const ViewAssignedTasks = () => {
       await axios.delete(`${BACKEND_URL}/api/tasks/${editTask.task_id}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` },
       });
+      // Update local state immediately
+      setGroupedTasks((prev) => {
+        const newGrouped = { ...prev };
+        Object.keys(newGrouped).forEach((employeeId) => {
+          newGrouped[employeeId].tasks = newGrouped[employeeId].tasks.filter(
+            (task) => task.task_id !== editTask.task_id
+          );
+        });
+        setFilteredTasks(applySearchFilter(newGrouped, searchQuery));
+        return newGrouped;
+      });
       toast.success(`Task deleted successfully`);
       setEditTask(null);
       setShowDeleteConfirm(false);
@@ -436,7 +459,7 @@ const ViewAssignedTasks = () => {
               <path
                 className="opacity-75"
                 fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 01 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
             <p className="mt-2 text-white text-sm font-medium">Loading...</p>
@@ -729,7 +752,7 @@ const ViewAssignedTasks = () => {
                   value={addForm.description}
                   onChange={(e) => handleChange(e, 'add')}
                   placeholder="Enter task description"
-                  className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
+                  className="w-full border border-indigo-200 px-3 py-1.5 rounded-md bg-indigo-50/50 focus:outline-none focus:ring2 focus:ring-purple-500 text-sm transition-all duration-200 resize-none"
                   rows="3"
                   disabled={loading}
                 />
@@ -810,18 +833,6 @@ const ViewAssignedTasks = () => {
           </div>
         </div>
       )}
-
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
     </div>
   );
 };

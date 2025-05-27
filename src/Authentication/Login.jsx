@@ -34,6 +34,7 @@ const Login = () => {
       if (token && user.id) {
         localStorage.setItem('token', token);
         localStorage.setItem('id', user.id);
+
         toast.success('Login successful');
         setTimeout(() => navigate('/home'), 1000);
       } else {

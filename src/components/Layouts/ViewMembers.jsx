@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaMale, FaFemale, FaEye, FaPowerOff } from 'react-icons/fa';
-import { ToastContainer, toast } from 'react-toastify';
+import {  toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Tooltip } from 'react-tooltip';
 import 'react-tooltip/dist/react-tooltip.css';
@@ -100,7 +100,7 @@ const ViewMembers = () => {
 
   return (
     <div className="w-full h-full px-4 sm:px-6 py-6 overflow-y-auto bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-xl">
-      <ToastContainer position="top-right" autoClose={2000} />
+      
 
       {/* Loader Overlay */}
       {loading && (

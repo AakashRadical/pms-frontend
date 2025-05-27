@@ -10,10 +10,10 @@ import {
   FileDoneOutlined,
 } from '@ant-design/icons';
 import { Button, Layout, Menu, Grid, Modal, Spin } from 'antd';
-
 import { useNavigate } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import io from 'socket.io-client';
 import Addmembers from '../Layouts/Addmembers';
 import AssignTasks from '../Layouts/AssignTasks';
 import ViewAssignedTasks from '../Layouts/ViewAssignedTasks';
@@ -25,50 +25,95 @@ const { useBreakpoint } = Grid;
 
 const Home = () => {
   const [collapsed, setCollapsed] = useState(false);
-  const [currentPage, setCurrentPage] = useState("view-tasks");
+  const [currentPage, setCurrentPage] = useState('view-tasks');
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const screens = useBreakpoint();
   const navigate = useNavigate();
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+  const adminId = localStorage.getItem('id');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      localStorage.removeItem('token');
-      localStorage.removeItem('id');
+    if (!token || !adminId) {
+      localStorage.clear();
+      navigate('/login', { replace: true });
+      return;
     }
-  }, [navigate]);
+
+    const socket = io(BACKEND_URL, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket.IO connected in Home:', socket.id);
+      socket.emit('join', adminId);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error in Home:', error.message);
+      if (error.message.includes('Authentication error')) {
+        localStorage.clear();
+        toast.error('Session expired. Please log in again.');
+        navigate('/login', { replace: true });
+      }
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.disconnect();
+    };
+  }, [navigate, adminId]);
 
   const handleLogout = () => {
     setLogoutModalVisible(true);
   };
 
   const confirmLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('id');
-    navigate('/login');
+    setLoading(true);
+    try {
+      const socket = io.connect(BACKEND_URL, {
+        auth: { token: localStorage.getItem('token') },
+      });
+      socket.disconnect();
+      localStorage.clear();
+      toast.success('Logged out successfully');
+      setTimeout(() => {
+        setLogoutModalVisible(false);
+        navigate('/login', { replace: true });
+      }, 1000);
+    } catch (err) {
+      console.error('Logout error:', err);
+      toast.error('Failed to log out');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleMenuClick = (e) => {
     setCurrentPage(e.key);
     if (screens.xs) {
-      setCollapsed(true); // Auto-collapse sidebar on menu click for small screens
+      setCollapsed(true);
     }
   };
 
   const renderContent = () => {
     switch (currentPage) {
-      case "view-members":
+      case 'view-members':
         return <ViewMembers />;
-      case "add-members":
+      case 'add-members':
         return <Addmembers />;
-      case "assign-tasks":
+      case 'assign-tasks':
         return <AssignTasks />;
-      case "view-tasks":
+      case 'view-tasks':
         return <ViewAssignedTasks />;
-      case "completed":
+      case 'completed':
         return <CompletedTasks />;
       default:
         return (
@@ -109,7 +154,7 @@ const [loading, setLoading] = useState(false);
 
   return (
     <div className="relative">
-      <Layout style={{ minHeight: '100vh', filter: logoutModalVisible ? 'blur(5px)' : 'none' }}>
+      <Layout style={{ minHeight: '100vh' }}>
         <Sider
           trigger={null}
           collapsible
@@ -172,27 +217,26 @@ const [loading, setLoading] = useState(false);
               icon={<LogoutOutlined />}
               danger
               onClick={handleLogout}
+              disabled={loading}
             >
               Logout
             </Button>
           </Header>
 
-    <Content
-  style={{
-    margin: '24px 16px',
-    padding: 24,
-    minHeight: 280,
-    background: 'linear-gradient(to bottom right, #e0e7ff, #f3e8ff)',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  }}
->
-  <Spin spinning={loading} size="large" tip="Loading..." style={{ minHeight: '200px' }}>
-    {renderContent()}
-  </Spin>
-</Content>
-
-
+          <Content
+            style={{
+              margin: '24px 16px',
+              padding: 24,
+              minHeight: 280,
+              background: 'linear-gradient(to bottom right, #e0e7ff, #f3e8ff)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            }}
+          >
+            <Spin spinning={loading} size="large" tip="Loading...">
+              {renderContent()}
+            </Spin>
+          </Content>
         </Layout>
       </Layout>
 
@@ -214,13 +258,9 @@ const [loading, setLoading] = useState(false);
         onCancel={() => setLogoutModalVisible(false)}
         okText="Logout"
         cancelText="Cancel"
-        okButtonProps={{ danger: true }}
+        okButtonProps={{ danger: true, disabled: loading }}
+        cancelButtonProps={{ disabled: loading }}
         centered
-        styles={{
-          mask: {
-            backdropFilter: 'blur(3px)',
-          },
-        }}
       >
         <p>Are you sure you want to logout?</p>
       </Modal>

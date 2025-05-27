@@ -24,17 +24,26 @@ const UserLogin = () => {
     e.preventDefault();
     setLoading(true);
     try {
+      // Clear localStorage to prevent stale data
+      localStorage.removeItem('employeeToken');
+      localStorage.removeItem('employeeId');
+
       const res = await axios.post(`${BACKEND_URL}/api/employee/login`, form);
-      const token = res.data.token;
-      if (token) {
+      const { token, id, adminId } = res.data;
+      if (token && id && adminId) {
         localStorage.setItem('employeeToken', token);
-        localStorage.setItem('employeeId', res.data.id);
+        localStorage.setItem('employeeId', id);
+
         toast.success('Login successful');
         setTimeout(() => navigate('/user-dashboard'), 1000);
       } else {
-        toast.error('Failed to log in, no token received.');
+        toast.error('Failed to log in, invalid response.');
       }
     } catch (err) {
+      console.error('Login error:', {
+        message: err.message,
+        response: err.response?.data,
+      });
       toast.error(err.response?.data?.message || 'Login failed');
     } finally {
       setLoading(false);
@@ -43,7 +52,6 @@ const UserLogin = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-green-100 px-4 sm:px-6 lg:px-8">
-      {/* Loader Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center">
           <div className="flex flex-col items-center">
@@ -64,7 +72,7 @@ const UserLogin = () => {
               <path
                 className="opacity-75"
                 fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 01 4 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
             <p className="mt-2 text-white text-sm font-medium">Logging in...</p>
@@ -123,7 +131,7 @@ const UserLogin = () => {
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
-                className="absolute cursor-pointer right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring  rounded-md p-1"
+                className="absolute cursor-pointer right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring rounded-md p-1"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 disabled={loading}
               >
