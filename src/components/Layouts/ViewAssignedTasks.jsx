@@ -9,7 +9,7 @@ import io from 'socket.io-client';
 const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
 console.log('Socket.IO auth token:', token);
 
-const socket = io(import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000', {
+const socket = io(import.meta.env.VITE_BACKEND_URL , {
   auth: { token },
   transports: ['websocket', 'polling'], // Allow fallback to polling
   reconnection: true,
