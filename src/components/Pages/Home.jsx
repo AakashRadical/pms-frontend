@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -28,27 +28,34 @@ const Home = () => {
   const [currentPage, setCurrentPage] = useState('view-tasks');
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const screens = useBreakpoint();
   const navigate = useNavigate();
   const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ;
   const adminId = localStorage.getItem('id');
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
+  // Initialize socket once
+  const socket = useMemo(() => {
+    const token = localStorage.getItem('token') ;
+    console.log('Socket.IO auth token in Home:', token); // Debug
     if (!token || !adminId) {
       localStorage.clear();
+      toast.error('Please log in again.', { toastId: 'auth-error' });
       navigate('/login', { replace: true });
-      return;
+      return null;
     }
 
-    const socket = io(BACKEND_URL, {
+    return io(BACKEND_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+      path: '/socket.io',
     });
+  }, [navigate, adminId]);
+
+  useEffect(() => {
+    if (!socket) return;
 
     socket.on('connect', () => {
       console.log('Socket.IO connected in Home:', socket.id);
@@ -57,19 +64,29 @@ const Home = () => {
 
     socket.on('connect_error', (error) => {
       console.error('Socket.IO connection error in Home:', error.message);
+      toast.error(`Failed to connect to real-time updates: ${error.message}`, { toastId: 'connect-error' });
       if (error.message.includes('Authentication error')) {
         localStorage.clear();
-        toast.error('Session expired. Please log in again.');
+        toast.error('Session expired. Please log in again.', { toastId: 'session-expired' });
         navigate('/login', { replace: true });
       }
+    });
+
+    socket.on('forceDisconnect', (data) => {
+      console.log('Force disconnect received:', data.message);
+      socket.disconnect();
+      localStorage.clear();
+      toast.error('Logged out due to new login', { toastId: 'force-disconnect' });
+      navigate('/login', { replace: true });
     });
 
     return () => {
       socket.off('connect');
       socket.off('connect_error');
+      socket.off('forceDisconnect');
       socket.disconnect();
     };
-  }, [navigate, adminId]);
+  }, [socket, navigate, adminId]);
 
   const handleLogout = () => {
     setLogoutModalVisible(true);
@@ -78,19 +95,16 @@ const Home = () => {
   const confirmLogout = () => {
     setLoading(true);
     try {
-      const socket = io.connect(BACKEND_URL, {
-        auth: { token: localStorage.getItem('token') },
-      });
-      socket.disconnect();
+      if (socket) socket.disconnect();
       localStorage.clear();
-      toast.success('Logged out successfully');
+      toast.success('Logged out successfully', { toastId: 'logout-success' });
       setTimeout(() => {
         setLogoutModalVisible(false);
         navigate('/login', { replace: true });
       }, 1000);
     } catch (err) {
       console.error('Logout error:', err);
-      toast.error('Failed to log out');
+      toast.error('Failed to log out', { toastId: 'logout-error' });
     } finally {
       setLoading(false);
     }
@@ -112,7 +126,7 @@ const Home = () => {
       case 'assign-tasks':
         return <AssignTasks />;
       case 'view-tasks':
-        return <ViewAssignedTasks />;
+        return <ViewAssignedTasks socket={socket} />;
       case 'completed':
         return <CompletedTasks />;
       default:
